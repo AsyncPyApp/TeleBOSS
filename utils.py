@@ -54,8 +54,8 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "2.16"  # Current bot version
-    CODENAME = "Amber Autumn"
+    VERSION = "2.17"  # Current bot version
+    CODENAME = "Blue Butterfly"
     MIN_VERSION = "2.14"  # The minimum version from which you can upgrade to this one without breaking the bot
     BUILD_DATE = "07.10.2025"  # Bot build date
     ANONYMOUS_ID = 1087968824  # ID value for anonymous user tg
@@ -151,6 +151,11 @@ class ConfigData:
                 self.rate = self.bool_init(config["Chat"]["rate"])
                 self.admin_fixed = self.bool_init(config["Chat"]["admin-fixed"])
                 self.chat_mode = config["Chat"]["chat-mode"]
+                if config["Chat"]["chat-id"] != "init":
+                    self.main_chat_id = int(config["Chat"]["chat-id"])
+                else:
+                    self.debug = True
+                    self.main_chat_id = -1
                 if self.admin_fixed:
                     admin_allowed = {}
                     for name in self.__ADMIN_RECOMMENDED.keys():
@@ -183,12 +188,6 @@ class ConfigData:
             self.binary_chat_mode = 1
         elif self.chat_mode == "captcha":
             self.binary_chat_mode = 2
-
-        if config["Chat"]["chatid"] != "init":
-            self.main_chat_id = int(config["Chat"]["chatid"])
-        else:
-            self.debug = True
-            self.main_chat_id = -1
 
         try:
             self.debug = self.bool_init(config["Chat"]["debug"])
@@ -251,11 +250,15 @@ class ConfigData:
 
         if ban:
             if member_count > 15:
-                return 5
+                votes_need_ban = 5
             elif member_count > 5:
-                return 3
+                votes_need_ban = 3
             else:
-                return 2
+                votes_need_ban = 2
+            if votes_need_ban < self.__votes_need_min:
+                return self.__votes_need_min
+            return votes_need_ban
+
         elif minimum:
             if member_count > 30:
                 min_value = 5
@@ -346,7 +349,7 @@ class ConfigData:
         config = configparser.ConfigParser()
         config.add_section("Chat")
         config.set("Chat", "token", token)
-        config.set("Chat", "chatid", chat_id)
+        config.set("Chat", "chat-id", chat_id)
         config.set("Chat", "votes-mode", "3")
         config.set("Chat", "wait-timer", "30")
         config.set("Chat", "kill-mode", "2")
@@ -766,7 +769,7 @@ def write_init_chat(message):
     config = configparser.ConfigParser()
     try:
         config.read(data.path + "config.ini")
-        config.set("Chat", "chatid", str(message.chat.id))
+        config.set("Chat", "chat-id", str(message.chat.id))
         if message.message_thread_id is not None:
             config.set("Chat", "thread-id", str(message.message_thread_id))
             thread_ = " и темы "
@@ -789,12 +792,12 @@ def topic_reply_fix(message):  # Опять эти конченые из тг м
     return message
 
 
-def command_forbidden(message, private_dialog=False, text=None):
-    if private_dialog and message.chat.id == message.from_user.id:
+def command_forbidden(message, not_in_private_dialog=False, text=None):
+    if not_in_private_dialog and message.chat.id == message.from_user.id:
         text = text or "Данную команду невозможно запустить в личных сообщениях."
         bot.reply_to(message, text)
         return True
-    elif private_dialog:
+    elif not_in_private_dialog:
         return False
     elif message.chat.id != data.main_chat_id:
         text = text or "Данную команду можно запустить только в основном чате."

@@ -648,6 +648,81 @@ def start(message):
                                   f"с нашим чатом {bot.get_chat(data.main_chat_id).title}!")
 
 
+@bot.message_handler(commands=['overview'])
+def overview(message):
+    if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+        return
+
+    get_chat = bot.get_chat(data.main_chat_id)
+    chat_description = (f"\n<b>Описание чата:</b>\n<blockquote expandable>"
+                        f"{utils.html_fix(get_chat.description)}</blockquote>") if get_chat.description else ""
+
+    abuse_random_time = sqlWorker.abuse_random(data.main_chat_id)
+    if abuse_random_time == -1:
+        timer_random_text = "Команда /random отключена"
+    elif abuse_random_time == 0:
+        timer_random_text = "Кулдаун команды /random отключён"
+    else:
+        timer_random_text = f"{utils.formatted_timer(abuse_random_time)} - кулдаун команды /random."
+
+    auto_thresholds_mode = "" if not data.is_thresholds_auto() else " (авто)"
+    auto_thresholds_ban_mode = "" if not data.is_thresholds_auto(True) else " (авто)"
+    auto_thresholds_min_mode = "" if not data.is_thresholds_auto(minimum=True) else " (авто)"
+
+    if data.binary_chat_mode == 0:
+        chat_mode = "приватный"
+    elif data.binary_chat_mode == 1:
+        chat_mode = "публичный (с голосованием)"
+    else:
+        chat_mode = "публичный (с капчёй)"
+
+    shield_timer = sqlWorker.params("shield", default_return=0)
+    if shield_timer > int(time.time()):
+        shield_info = f"включена, до отключения осталось {utils.formatted_timer(shield_timer - int(time.time()))}"
+    else:
+        shield_info = "отключена"
+
+    marmalade_text = "включена" if sqlWorker.params("marmalade", default_return=True) else "отключена"
+
+    votes_list_len = len([record for record in sqlWorker.get_all_polls() if record[3] == data.main_chat_id])
+
+    plugin_list = "Нет загруженных плагинов"
+    if data.plugins:
+        plugin_list = "Список загруженных плагинов: " + ", ".join(data.plugins)
+
+    reply_text = (
+        f"<b>Версия Teleboss {data.VERSION} {data.CODENAME}, дата сборки: {data.BUILD_DATE}\n{plugin_list}\n\n</b>"
+        f"<b>Название чата:</b> {utils.html_fix(get_chat.title)}{chat_description}\n"
+        f"<b>Количество участников</b>: {bot.get_chat_member_count(data.main_chat_id)}\n"
+        f"<b>Количество союзных чатов</b>: {len(sqlWorker.get_allies())}\n"
+        f"<code>&gt; чтобы получить полный список, см. /allies</code>\n"
+        f"<b>Количество активных голосований:</b> {votes_list_len}\n\n"
+        f"<code>&gt; чтобы получить полный список, см. /votes</code>\n"
+        f"<b>Настройки защиты</b>\n"
+        f"Режим приватности чата: {chat_mode}\n"
+        f"<code>&gt; чтобы узнать подробнее, см. /private</code>\n"
+        f"Состояние защиты Shield: {shield_info}\n"
+        f"<code>&gt; чтобы узнать подробнее, см. /shield</code>\n"
+        f"Состояние защиты Marmalade: {marmalade_text}\n\n"
+        f"<code>&gt; чтобы узнать подробнее, см. /marmalade</code>\n"
+        f"<b>Таймеры голосований</b>\n"
+        f"Длительность обычных голосований: {utils.formatted_timer(data.global_timer)}\n"
+        f"Длительность бан-голосований: {utils.formatted_timer(data.global_timer_ban)}\n"
+        f"{timer_random_text}\n\n"
+        f"<code>&gt; чтобы узнать подробнее, см. /timer help</code>\n"
+        f"<b>Пороги количества голосов</b>\n"
+        "Голосов для досрочного закрытия обычного голосования требуется (за любой вариант): "
+        f"{data.thresholds_get()}{auto_thresholds_mode}\n"
+        "Голосов для досрочного закрытия бан-голосования требуется (за любой вариант): "
+        f"{data.thresholds_get(ban=True)}{auto_thresholds_ban_mode}\n"
+        "Минимальный порог голосов, требуемых для принятия решения: "
+        f"{data.thresholds_get(minimum=True)}{auto_thresholds_min_mode}\n"
+        f"<code>&gt; чтобы узнать подробнее, см. /threshold help</code>\n"
+    )
+
+    bot.reply_to(message, reply_text, parse_mode='html')
+
+
 @bot.message_handler(commands=['version'])
 def version(message):
     if not utils.bot_name_checker(message):

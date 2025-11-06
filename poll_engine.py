@@ -320,10 +320,7 @@ class PostVote:
                 usernames.append(username)
             except telebot.apihelper.ApiTelegramException:
                 continue
-        if not usernames:
-            return "нет голосов"
-        return ", ".join(usernames) + f" (всего {len(usernames)})"
-        return "нет голосов" if usernames == "" else f'{usernames[:-2]}.'
+        return "нет голосов" if not usernames else ", ".join(usernames) + f" (всего {len(usernames)})"
 
     def post_vote_child(self):
         return

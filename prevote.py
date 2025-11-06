@@ -316,22 +316,40 @@ class Unban(PreVote):
 
 class Thresholds(PreVote):
     vote_type = "threshold"
-    help_text = 'Используйте команду в формате "/threshold (число) [(пустое)|ban|min] "'
+    help_text = ('Используйте команду в формате "/threshold [(число)|auto] [(пустое)|ban|min]."\n'
+                 'Примеры: /threshold auto ban, /threshold 5 min, /threshold auto.\n'
+                 'Если число голосов для досрочного стандартных или бан-голосований оказывается ниже минимального '
+                 'порога, оно автоматически приравнивается к минимальному порогу.\n\n'
+                 'Автоматический порог высчитывается по нижеследующей схеме.\n'
+                 'Для досрочного завершения стандарных голосований:\n- количество участников, делённое на 2 нацело, '
+                 'но всегда меньше 8 и больше 2 и никогда не ниже значения минимального порога\n'
+                 'Для досрочного завершения бан-голосований:\n- 5 при количестве участников больше 15,\n- 3 при '
+                 'количестве участников больше 5\n- 2 в ином случае, но никогда не ниже минимального порога\n'
+                 'Для минимального порога принятия результатов голосования:\n- 5 при количестве '
+                 'участников больше 30\n- 3 при количестве участников больше 15\n- 2 в ином случае')
 
     def pre_return(self) -> Optional[bool]:
         if utils.command_forbidden(self.message):
             return True
         return None
 
+    @staticmethod
+    def auto_thr_text(bool_):
+        return " (авто)" if bool_ else ""
+
     def direct_fn(self):
-        auto_thresholds_mode = "" if not data.is_thresholds_auto() else " (автоматический режим)"
-        auto_thresholds_ban_mode = "" if not data.is_thresholds_auto(True) else " (автоматический режим)"
-        auto_thresholds_min_mode = "" if not data.is_thresholds_auto(minimum=True) else " (автоматический режим)"
-        bot.reply_to(self.message, "Текущие пороги:\nГолосов для обычного решения требуется: "
-                     + str(data.thresholds_get()) + auto_thresholds_mode + "\n"
-                     + "Голосов для бана требуется: " + str(data.thresholds_get(True)) + auto_thresholds_ban_mode
-                     + "\n" + "Минимальный порог голосов для принятия решения: "
-                     + str(data.thresholds_get(minimum=True)) + auto_thresholds_min_mode)
+
+        bot.reply_to(
+            self.message,
+            "<b>Текущие пороги количества голосов:</b>\n"
+            "Голосов для досрочного закрытия обычного голосования требуется (за любой вариант): "
+            f"{data.thresholds_get()}{self.auto_thr_text(data.is_thresholds_auto())}\n"
+            "Голосов для досрочного закрытия бан-голосования требуется (за любой вариант): "
+            f"{data.thresholds_get(ban=True)}{self.auto_thr_text(data.is_thresholds_auto(ban=True))}\n"
+            "Суммарный минимальный порог голосов, требуемый для принятия решения: "
+            f"{data.thresholds_get(minimum=True)}{self.auto_thr_text(data.is_thresholds_auto(minimum=True))}",
+            parse_mode='html'
+        )
 
     def get_votes_text(self):
         if self.unique_id == "threshold_min":
@@ -355,10 +373,10 @@ class Thresholds(PreVote):
                 bot.reply_to(self.message, "Количество голосов не может быть больше количества участников в чате.")
                 return
             elif thr_value < 2 and not data.debug:
-                bot.reply_to(self.message, "Минимальное количество голосов не может быть меньше 2")
+                bot.reply_to(self.message, "Количество голосов не может быть меньше 2")
                 return
             elif thr_value < 1:
-                bot.reply_to(self.message, "Минимальное количество голосов не может быть меньше 1")
+                bot.reply_to(self.message, "Количество голосов не может быть меньше 1 (в дебаг-режиме)")
                 return
         else:
             thr_value = 0
@@ -374,50 +392,55 @@ class Thresholds(PreVote):
             bot.reply_to(self.message, "Неизвестный второй аргумент, см. /threshold help")
 
     def main(self, thr_value):
-        self.unique_id = "threshold"
-        ban_text = " стандартных голосований "
-        self.pre_vote(thr_value, False, False, ban_text=ban_text)
+        self.pre_vote(thr_value, "threshold")
 
     def ban(self, thr_value):
-        self.unique_id = "threshold_ban"
-        ban_text = " бан-голосований "
-        self.pre_vote(thr_value, True, False, ban_text=ban_text)
+        self.pre_vote(thr_value, "threshold")
 
     def min(self, thr_value):
-        self.unique_id = "threshold_min"
-        min_text = " нижнего "
-        warn = "\n<b>Внимание! Результаты голосования за минимальный порог " \
-               "принимаются вне зависимости от минимального порога!" \
-               "\nВремя завершения голосования за минимальный порог - 24 часа!</b>"
         if not data.debug:
             self.current_timer = 86400
-        self.pre_vote(thr_value, False, True, min_text=min_text, warn=warn)
+        self.pre_vote(thr_value, "threshold_min")
 
-    def pre_vote(self, thr_value, _ban, _min, ban_text=" ", min_text=" ", warn=""):
+    def pre_vote(self, thr_value, vote_type):
+
+        self.unique_id = vote_type
 
         if self.is_voting_exist():
             return
 
-        if thr_value < data.thresholds_get(minimum=True) and not _min:
-            bot.reply_to(self.message, "Количество голосов не может быть меньше "
-                         + str(data.thresholds_get(minimum=True)))
+        if vote_type == "threshold_min":
+            vote_type_text = "минимального порога голосов"
+        elif vote_type == "threshold_ban":
+            vote_type_text = "порога голосов бан-голосований"
+        else:
+            vote_type_text = "порога голосов стандартных голосований"
+
+        if 0 < thr_value < data.thresholds_get(minimum=True) and vote_type != "threshold_min":
+            bot.reply_to(self.message, f"Количество голосов не может быть ниже текущего "
+                                       f"минимального порога {data.thresholds_get(minimum=True)}")
             return
 
-        if thr_value == data.thresholds_get(_ban, _min):
+        if thr_value == data.thresholds_get(vote_type == "threshold_ban", vote_type == "threshold_min"):
             bot.reply_to(self.message, "Это значение установлено сейчас!")
             return
 
-        if data.is_thresholds_auto(_ban, _min) and thr_value == 0:
+        if data.is_thresholds_auto(vote_type == "threshold_ban", vote_type == "threshold_min") and thr_value == 0:
             bot.reply_to(self.message, "Значения порога уже вычисляются автоматически!")
             return
 
+        warn = ''
+        if vote_type == "threshold_min":
+            warn = ("\n<b>Внимание! Результаты голосования за минимальный порог принимаются, "
+                    "даже если голосование набрало количество голосов ниже текущего минимального порога!\n"
+                    "Время завершения голосования за минимальный порог - 24 часа!</b>")
+
         if thr_value != 0:
-            self.vote_text = (f"Тема голосования: установка{min_text}порога голосов{ban_text}на значение {thr_value}"
-                              f".\nИнициатор голосования: {utils.username_parser(self.message, True)}." + warn)
+            self.vote_text = (f"Тема голосования: установка {vote_type_text} на значение {thr_value}.\n"
+                              f"Инициатор голосования: {utils.username_parser(self.message, True)}." + warn)
         else:
-            self.vote_text = (f"Тема голосования: установка{min_text}порога голосов{ban_text}"
-                              f"на автоматически выставляемое значение"
-                              f".\nИнициатор голосования: {utils.username_parser(self.message, True)}." + warn)
+            self.vote_text = (f"Тема голосования: установка {vote_type_text} на автоматически выставляемое значение.\n"
+                              f"Инициатор голосования: {utils.username_parser(self.message, True)}." + warn)
         self.vote_args = [thr_value, self.unique_id]
         self.poll_maker()
 
@@ -428,7 +451,7 @@ class Timer(PreVote):
                 "Подробнее о парсинге времени - см. команду /help."
 
     def pre_return(self) -> Optional[bool]:
-        if utils.command_forbidden(self.message, private_dialog=True):
+        if utils.command_forbidden(self.message, not_in_private_dialog=True):
             return True
         return None
 
@@ -444,13 +467,13 @@ class Timer(PreVote):
         if self.message.chat.id == data.main_chat_id:
             timer_text = utils.formatted_timer(data.global_timer) + " для обычного голосования.\n" \
                          + utils.formatted_timer(data.global_timer_ban) + " для голосования за бан.\n"
-        if sqlWorker.abuse_random(self.message.chat.id) == -1:
+        abuse_random_time = sqlWorker.abuse_random(self.message.chat.id)
+        if abuse_random_time == -1:
             timer_random_text = "Команда /random отключена."
-        elif sqlWorker.abuse_random(self.message.chat.id) == 0:
+        elif abuse_random_time == 0:
             timer_random_text = "Кулдаун команды /random отключён."
         else:
-            timer_random_text = utils.formatted_timer(sqlWorker.abuse_random(self.message.chat.id)) \
-                                + " - кулдаун команды /random."
+            timer_random_text = f"{utils.formatted_timer(abuse_random_time)} - кулдаун команды /random."
         bot.reply_to(self.message, "Текущие пороги таймера:\n" + timer_text + timer_random_text)
 
     def arg_fn(self, arg):
@@ -842,7 +865,7 @@ class MessageSilentRemover(MessageRemover):
 
 
 class PrivateMode(PreVote):
-    help_text = "Существуют три режима работы антиспам-фильтра TeleBOSS.\n" \
+    help_text = "Существуют три режима приватности чата:\n" \
                 "1. Использование вайтлиста и системы инвайтов. Участник, не найденный в вайтлисте или в " \
                 "одном из союзных чатов, блокируется. Классическая схема, применяемая для приватных чатов.\n" \
                 "2. Использование голосования при вступлении участника. При вступлении участника в чат " \
@@ -892,24 +915,24 @@ class PrivateMode(PreVote):
             return
 
         try:
-            chosen_mode = int(arg)
-            if not 1 <= chosen_mode <= 3:
+            chosen_mode = int(arg) - 1
+            if not 0 <= chosen_mode <= 2:
                 raise ValueError
         except ValueError:
             bot.reply_to(self.message, "Неверный аргумент (должно быть число от 1 до 3).")
             return
 
-        if chosen_mode - 1 == data.binary_chat_mode:
+        if chosen_mode == data.binary_chat_mode:
             bot.reply_to(self.message, "Данный режим уже используется сейчас!")
             return
 
-        chat_modes = ["", "приватный", "публичный (с голосованием)", "публичный (с капчёй)"]
+        chat_modes = ["приватный", "публичный (с голосованием)", "публичный (с капчёй)"]
         chat_mode = chat_modes[chosen_mode]
 
         self.vote_text = (f"Тема голосования: изменение режима приватности чата на {chat_mode}."
                           f"\nИнициатор голосования: {utils.username_parser(self.message, True)}.")
         self.vote_type = self.unique_id
-        self.vote_args = [chosen_mode - 1, utils.username_parser(self.message, True), chat_mode]
+        self.vote_args = [chosen_mode, utils.username_parser(self.message, True), chat_mode]
         self.poll_maker()
 
 
@@ -1562,7 +1585,7 @@ class NewUserChecker(PreVote):
 
     def allies_whitelist_add(self):
         allies = sqlWorker.get_allies()
-        if allies is None:
+        if not allies:
             return None
         for ally_id in allies:
             try:
@@ -1810,7 +1833,7 @@ class AlliesList(PreVote):
             return
 
         allies = sqlWorker.get_allies()
-        if allies is None:
+        if not allies:
             bot.reply_to(self.message, "В настоящее время у вас нет союзников.")
             return
         threading.Thread(target=self.allies_building, args=(allies,)).start()
@@ -1819,22 +1842,22 @@ class AlliesList(PreVote):
         allies_msg = bot.reply_to(self.message, "Сборка списка союзных чатов, ожидайте...")
         allies_text = "Список союзных чатов: \n"
         ally_counter = 0
-        for i in allies:
+        for ally in allies:
             try:
-                bot.get_chat_member(i[0], data.bot_id).status
+                bot.get_chat_member(ally[0], data.bot_id).status
             except telebot.apihelper.ApiTelegramException:
-                sqlWorker.remove_ally(i[0])
+                sqlWorker.remove_ally(ally[0])
                 continue
             try:
-                invite_link = bot.get_chat(i[0]).invite_link
+                invite_link = bot.get_chat(ally[0]).invite_link
                 ally_counter += 1
                 if invite_link is not None:
                     allies_text = allies_text + \
                                   f'{ally_counter}. <a href="{invite_link}">' \
-                                  f'{utils.html_fix(bot.get_chat(i[0]).title)}</a>\n'
+                                  f'{utils.html_fix(bot.get_chat(ally[0]).title)}</a>\n'
                 else:
                     allies_text = allies_text + \
-                                  f"{ally_counter}. {utils.html_fix(bot.get_chat(i[0]).title)} " \
+                                  f"{ally_counter}. {utils.html_fix(bot.get_chat(ally[0]).title)} " \
                                   f"(пригласительная ссылка отсутствует)\n"
             except telebot.apihelper.ApiTelegramException as e:
                 logging.error(f'Error while assembling the list of allies!\n{e}')
@@ -1968,7 +1991,8 @@ class Votes(PreVote):
                  '<b>Текущий статус приватности голосований</b>: {}')
 
     def pre_return(self) -> Optional[bool]:
-        if not utils.bot_name_checker(self.message) or utils.command_forbidden(self.message, private_dialog=True):
+        if (not utils.bot_name_checker(self.message) or
+                utils.command_forbidden(self.message, not_in_private_dialog=True)):
             return True
         return None
 

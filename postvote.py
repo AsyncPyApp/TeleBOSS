@@ -177,7 +177,7 @@ class Captcha(PostVote):
 
 class Threshold(PostVote):
     votes_counter = ""
-    ban_text = ""
+    threshold_type_text = ""
     ban = False
     minimum = False
     _description = "смена порога голосов"
@@ -195,11 +195,11 @@ class Threshold(PostVote):
         self.ban = True if self.data_list[1] == "threshold_ban" else False
         self.minimum = True if self.data_list[1] == "threshold_min" else False
         if self.ban:
-            self.ban_text = "голосований по вопросам бана"
+            self.threshold_type_text = "голосований по вопросам бана"
         elif self.minimum:
-            self.ban_text = "минимального количества голосов"
+            self.threshold_type_text = "минимального количества голосов"
         else:
-            self.ban_text = "голосований по стандартным вопросам"
+            self.threshold_type_text = "голосований по стандартным вопросам"
         if self.data_list[1] == "threshold_min":
             self.votes_counter = "\nЗа: " + str(counters_yes) + "\n" + "Против: " + str(counters_no)
         if counters_yes > counters_no and self.data_list[1] == "threshold_min":
@@ -208,18 +208,18 @@ class Threshold(PostVote):
     def accept(self):
         if self.data_list[0] == 0:
             data.thresholds_set(0, self.ban, self.minimum)
-            bot.edit_message_text(f"Установлен автоматический порог {self.ban_text}.\n"
-                                  + "Теперь требуется " + str(data.thresholds_get(self.ban))
-                                  + " голосов для решения." + self.votes_counter,
+            bot.edit_message_text(f"Установлен автоматический порог {self.threshold_type_text}.\n"
+                                  + "Теперь требуется минимум " + str(data.thresholds_get(self.ban))
+                                  + " голосов для принятия решения." + self.votes_counter,
                                   self.message_vote.chat.id, self.message_vote.message_id)
         else:
             data.thresholds_set(self.data_list[0], self.ban, self.minimum)
-            bot.edit_message_text(f"Установлен порог {self.ban_text}: "
+            bot.edit_message_text(f"Установлен порог {self.threshold_type_text}: "
                                   + str(self.data_list[0]) + self.votes_counter,
                                   self.message_vote.chat.id, self.message_vote.message_id)
 
     def decline(self):
-        bot.edit_message_text(f"Вопрос смены порога {self.ban_text} отклонён."
+        bot.edit_message_text(f"Вопрос смены порога {self.threshold_type_text} отклонён."
                               + self.votes_counter, self.message_vote.chat.id, self.message_vote.message_id)
 
 

@@ -62,7 +62,7 @@
           "name": "threshold",
           "mark": null,
           "aliases": null,
-          "args": ["2..кол-во участников или auto", "ban|min"],
+          "args": ["2..кол-во участников или auto", "ban|min|(пусто)"],
           "short_desc": ["изменить минимальный или досрочный порог голосов."]
         },
         {
@@ -268,6 +268,13 @@
           "aliases": null,
           "args": null,
           "short_desc": ["помощь по командам бота."]
+        },
+        {
+          "name": "overview",
+          "mark": null,
+          "aliases": null,
+          "args": null,
+          "short_desc": ["сводная техническая информация о чате."]
         }
       ]
     },

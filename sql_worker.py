@@ -221,7 +221,7 @@ class SqlWorker:
             sql_wrapper.cursor.execute("""SELECT * FROM allies""")
             record = sql_wrapper.cursor.fetchall()
             if not record:
-                return None
+                return []
             return record
 
     def add_ally(self, chat_id):
