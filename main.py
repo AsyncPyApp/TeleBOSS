@@ -718,6 +718,7 @@ def overview(message):
         "Минимальный порог голосов, требуемых для принятия решения: "
         f"{data.thresholds_get(minimum=True)}{auto_thresholds_min_mode}\n"
         f"<code>&gt; чтобы узнать подробнее, см. /threshold help</code>\n"
+        f"Подробную справку о том, как работать с ботом, можно получить командой <code>/help</code>"
     )
 
     bot.reply_to(message, reply_text, parse_mode='html')

@@ -57,7 +57,7 @@ class ConfigData:
     VERSION = "2.17"  # Current bot version
     CODENAME = "Blue Butterfly"
     MIN_VERSION = "2.14"  # The minimum version from which you can upgrade to this one without breaking the bot
-    BUILD_DATE = "07.10.2025"  # Bot build date
+    BUILD_DATE = "06.11.2025"  # Bot build date
     ANONYMOUS_ID = 1087968824  # ID value for anonymous user tg
     EASTER_LINK = "https://goo.su/wLZSEz1"  # Link for Easter eggs
     global_timer = 3600  # Value in seconds of duration of votes
