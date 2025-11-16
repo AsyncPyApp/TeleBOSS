@@ -4,6 +4,8 @@ import json
 import logging
 import os
 import pickle
+from dataclasses import dataclass
+from typing import Callable, Optional
 
 from packaging import version
 from telebot import types
@@ -16,6 +18,12 @@ from importlib import reload
 import sql_worker
 
 import telebot
+
+
+@dataclass
+class Command:
+    command_func: Callable
+    aliases: Optional[tuple[str]]
 
 
 class ConfigData:
@@ -54,12 +62,12 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "2.17"  # Current bot version
-    CODENAME = "Blue Butterfly"
+    VERSION = "3.0"  # Current bot version
+    CODENAME = "Awakened Atom"
     MIN_VERSION = "2.14"  # The minimum version from which you can upgrade to this one without breaking the bot
-    BUILD_DATE = "06.11.2025"  # Bot build date
+    BUILD_DATE = "16.11.2025"  # Bot build date
     ANONYMOUS_ID = 1087968824  # ID value for anonymous user tg
-    EASTER_LINK = "https://goo.su/wLZSEz1"  # Link for Easter eggs
+    EASTER_LINK = "https://2girls.1cup.one"  # Link for Easter eggs
     global_timer = 3600  # Value in seconds of duration of votes
     global_timer_ban = 300  # Value in seconds of duration of ban-votes
     __votes_need = 0  # Required number of votes for early voting closure
@@ -853,3 +861,41 @@ def make_mailing(vote_type, message_vote_id, current_timer):
             sqlWorker.mailing(subscriber, remove=True)
         if not subscriber_index % 10 and subscriber_index:
             time.sleep(10)  # Protection against too many requests
+
+
+def register_commands(plugins_command_list, built_in_command_list):
+    for command_list in (plugins_command_list, built_in_command_list):
+        for command, command_data in command_list.items():
+            commands_list = [command]
+            if command_data.aliases:
+                commands_list.extend(command_data.aliases)
+            handler_dict = {
+                'function': command_data.command_func,
+                'filters': {'commands': commands_list}
+            }
+            bot.add_message_handler(handler_dict)
+
+
+def calc_engine(calc_text, to_send):
+    try:
+        result = eval(calc_text.replace(',', '.').replace('^', '**'))
+        if isinstance(result, float):
+            result = round(result, 10)
+            if result.is_integer():
+                result = int(result)
+        result = str(result)
+    except SyntaxError:
+        to_send.put("Неверно введено выражение для вычисления.")
+        return
+    except ZeroDivisionError:
+        to_send.put(f"{calc_text}\n=деление на 0")
+        return
+    except ValueError as e:
+        if 'Exceeds the limit' in str(e):
+            to_send.put("Результат слишком большой для отправки.")
+        else:
+            logging.error(traceback.format_exc())
+            to_send.put("Неизвестная ошибка вычисления! Информация сохранена в логи бота.")
+        return
+    result = result.replace('.', ',') if calc_text.count(',') >= calc_text.count('.') else result
+    to_send.put(f"{calc_text}\n=<code>{result}</code>")
