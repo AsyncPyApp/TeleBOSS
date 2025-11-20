@@ -84,8 +84,12 @@ class Plugins:
                             current_plugin_commands.extend(command_data.aliases)
                         for cmd in current_plugin_commands:
                             registered_plugin_name = registered_cmd_by_plugins.get(cmd)
-                            if registered_plugin_name:
-                                logging.error(f'Conflicting commands in plugins - the command "{command}" has already '
+                            if registered_plugin_name == entry:
+                                logging.error(f'Error in plugin "{entry}" - duplicate registration of "{cmd}" command '
+                                              f'detected. The bot will close.')
+                                sys.exit(1)
+                            elif registered_plugin_name:
+                                logging.error(f'Conflicting commands in plugins - the command "{cmd}" has already '
                                               f'been registered by another plugin "{registered_plugin_name}". '
                                               f'The bot will close.')
                                 sys.exit(1)
