@@ -330,7 +330,8 @@ class BuildInCommands:
         for i in range(5):
             try:
                 msg_id = random.randint(1, message.id)
-                bot.forward_message(message.chat.id, message.chat.id, msg_id)
+                bot.forward_message(message.chat.id, message.chat.id, msg_id,
+                                    message_thread_id=message.message_thread_id)
                 return
             except telebot.apihelper.ApiTelegramException as e:
                 if "message has protected content and can't be forwarded" in str(e):

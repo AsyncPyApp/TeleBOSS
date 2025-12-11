@@ -62,7 +62,7 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "3.0.1"  # Current bot version
+    VERSION = "3.0.2"  # Current bot version
     CODENAME = "Awakened Atom"
     MIN_VERSION = "2.14"  # The minimum version from which you can upgrade to this one without breaking the bot
     BUILD_DATE = "20.11.2025"  # Bot build date
