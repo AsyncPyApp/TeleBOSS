@@ -1086,11 +1086,12 @@ class Op(PreVote):
         buttons_scheme = self.get_buttons_scheme()
         self.vote_text = self.op_vote_text()
         self.hidden = bool(poll[0][8])
+        topic_id = poll[0][9]
         bot.edit_message_text(self.get_votes_text(), message.chat.id, message.id,
                               reply_markup=utils.make_keyboard(buttons_scheme, self.hidden), parse_mode='html')
         sqlWorker.add_poll(self.unique_id(), message.id, self.vote_type, message.chat.id,
                            json.dumps(buttons_scheme), int(time.time()) + self.current_timer,
-                           json.dumps(self.vote_args()), self.current_votes, self.hidden)
+                           json.dumps(self.vote_args()), self.current_votes, self.hidden, topic_id)
         utils.poll_saver(self.unique_id(), message)
         try:
             bot.pin_chat_message(message.chat.id, message.id, disable_notification=True)
@@ -2008,11 +2009,14 @@ class Votes(PreVote):
         if bot.get_chat(self.message.chat.id).username is not None:
             format_chat_id = bot.get_chat(self.message.chat.id).username
         else:
-            format_chat_id = "c/" + str(self.message.chat.id)[4:]
+            format_chat_id = f"c/{str(self.message.chat.id)[4:]}"
 
         for record in records:
             if record[3] != self.message.chat.id:
                 continue
+            if self.message.chat.is_forum:
+                thread_id = f'/{record[9]}' if record[9] else '/1'
+                format_chat_id += thread_id
             try:
                 vote_type = pool_engine.post_vote_list[record[2]].description
             except KeyError:

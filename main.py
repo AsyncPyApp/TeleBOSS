@@ -674,6 +674,11 @@ class BuildInCommands:
             return
 
         get_chat = bot.get_chat(data.main_chat_id)
+
+        thread_text = ''
+        if message.chat.is_forum:
+            thread_id = message.message_thread_id if message.message_thread_id else 1
+            thread_text = f"\n<b>ID топика:</b> {thread_id}"
         chat_description = (f"\n<b>Описание чата:</b>\n<blockquote expandable>"
                             f"{utils.html_fix(get_chat.description)}</blockquote>") if get_chat.description else ""
 
@@ -712,7 +717,8 @@ class BuildInCommands:
 
         reply_text = (
             f"<b>Версия Teleboss {data.VERSION} {data.CODENAME}, дата сборки: {data.BUILD_DATE}\n{plugin_list}\n\n</b>"
-            f"<b>Название чата:</b> {utils.html_fix(get_chat.title)}{chat_description}\n"
+            f"<b>Название чата:</b> {utils.html_fix(get_chat.title)}\n"
+            f"<b>ID чата:</b> {data.main_chat_id}{thread_text}{chat_description}\n"
             f"<b>Количество участников</b>: {bot.get_chat_member_count(data.main_chat_id)}\n"
             f"<b>Количество союзных чатов</b>: {len(sqlWorker.get_allies())}\n"
             f"<code>&gt; чтобы получить полный список, см. /allies</code>\n"

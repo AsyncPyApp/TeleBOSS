@@ -212,9 +212,13 @@ class PreVote:
         buttons_scheme = self.get_buttons_scheme()
         hidden = True if self.privacy == "hidden" else False
         message_vote = utils.vote_make(vote_text, self.message, buttons_scheme, self.add_user, self.direct, hidden)
+        topic_id = None
+        if message_vote.message_thread_id and self.message.chat.is_forum:
+            topic_id = message_vote.message_thread_id
+
         sqlWorker.add_poll(self.unique_id, message_vote.id, self.vote_type, self.message.chat.id,
                            json.dumps(buttons_scheme), int(time.time()) + self.current_timer,
-                           json.dumps(self.vote_args), self.current_votes, hidden)
+                           json.dumps(self.vote_args), self.current_votes, hidden, topic_id)
         utils.poll_saver(self.unique_id, message_vote)
         if not self.silent:
             threading.Thread(target=utils.make_mailing, daemon=True,
