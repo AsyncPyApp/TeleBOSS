@@ -708,7 +708,7 @@ def bot_name_checker(message, get_chat=False) -> bool:
     cmd_text = message.text.split()[0]
 
     cmd_list = cmd_text.split('@', maxsplit=1)
-    return len(cmd_list) == 1 or f"@{bot.get_me().username}" == cmd_list[-1]
+    return len(cmd_list) == 1 or bot.get_me().username == cmd_list[-1]
 
 
 def poll_saver(unique_id, message_vote):
