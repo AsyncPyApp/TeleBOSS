@@ -62,7 +62,7 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "3.1"  # Current bot version
+    VERSION = "3.1.1"  # Current bot version
     CODENAME = "Broadcast BetaRay"
     MIN_VERSION = "2.14"  # The minimum version from which you can upgrade to this one without breaking the bot
     BUILD_DATE = "02.02.2026"  # Bot build date
@@ -702,57 +702,30 @@ def bot_name_checker(message, get_chat=False) -> bool:
     if message.text is None:
         return True
 
+    if (data.main_chat_id != -1) == get_chat:
+        return False
+
     cmd_text = message.text.split()[0]
 
-    if data.main_chat_id != -1 and get_chat:
-        return False
-
-    if data.main_chat_id == -1 and not get_chat:
-        return False
-
-    if ("@" in cmd_text and "@" + bot.get_me().username in cmd_text) or not ("@" in cmd_text):
-        return True
-    else:
-        return False
+    cmd_list = cmd_text.split('@', maxsplit=1)
+    return len(cmd_list) == 1 or f"@{bot.get_me().username}" == cmd_list[-1]
 
 
 def poll_saver(unique_id, message_vote):
     try:
         with open(data.path + unique_id, 'wb') as poll:
             pickle.dump(message_vote, poll, protocol=4)
-            poll.close()
     except (IOError, pickle.PicklingError):
         logging.error("Failed to picking a poll! You will not be able to resume the timer after restarting the bot!")
         logging.error(traceback.format_exc())
 
 
 def allowed_list(locked=False):
-    allowed_text = ""
+    lines = []
     for name, value in data.admin_allowed.items():
-        allowed_text += data.admin_rus[name]
-        if value:
-            allowed_text += " ✅\n"
-        elif locked:
-            allowed_text += " 🔒\n"
-        else:
-            allowed_text += " ❌\n"
-    return allowed_text[:-1]
-
-
-def is_current_perm_allowed(local_list, global_list):
-    def current_perm_counter():
-        nonlocal local_list, global_list
-        while local_list != 1 or global_list != 1:
-            if local_list % 2 == 1 and global_list % 2 == 0:
-                yield False
-            else:
-                yield True
-            local_list, global_list = local_list >> 1, global_list >> 1
-
-    for i in current_perm_counter():
-        if not i:
-            return False
-    return True
+        status = "✅" if value else ("🔒" if locked else "❌")
+        lines.append(f"{data.admin_rus[name]} {status}")
+    return "\n".join(lines)
 
 
 def welcome_msg_get(username, message):
