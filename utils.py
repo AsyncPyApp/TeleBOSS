@@ -62,7 +62,7 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "3.1.1"  # Current bot version
+    VERSION = "3.1.2"  # Current bot version
     CODENAME = "Broadcast BetaRay"
     MIN_VERSION = "2.14"  # The minimum version from which you can upgrade to this one without breaking the bot
     BUILD_DATE = "02.02.2026"  # Bot build date
@@ -766,9 +766,7 @@ def write_init_chat(message):
 
 
 def topic_reply_fix(message):  # Опять эти конченые из тг мне насрали
-    if not message:
-        return None
-    if message.content_type == "forum_topic_created":
+    if not message or message.content_type == "forum_topic_created":
         return None
     return message
 

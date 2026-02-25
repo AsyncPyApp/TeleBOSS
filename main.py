@@ -351,7 +351,7 @@ class BuildInCommands:
         if message.chat.id == data.main_chat_id:
             if bot.get_chat_member(data.main_chat_id, message.from_user.id).status not in ("administrator", "creator"):
                 bot.reply_to(message, "Данная команда не может быть запущена в основном чате не администраторами.")
-            elif message.reply_to_message is None:
+            elif utils.topic_reply_fix(message.reply_to_message) is None:
                 bot.reply_to(message, "Требуется реплейнуть сообщение участника, "
                                       "которому вы хотите сбросить абуз инвайта.")
             elif message.reply_to_message.from_user.id == data.bot_id:
@@ -553,7 +553,7 @@ class BuildInCommands:
         if not utils.bot_name_checker(message) or utils.command_forbidden(message):
             return
 
-        if message.reply_to_message is not None:
+        if utils.topic_reply_fix(message.reply_to_message):
             user_id = message.reply_to_message.from_user.id
         elif utils.extract_arg(message.text, 1) is not None:
             user_id = utils.extract_arg(message.text, 1)
