@@ -4,10 +4,13 @@ import json
 import logging
 import os
 import pickle
+import subprocess
 from dataclasses import dataclass
 from typing import Callable, Optional
 
 from packaging import version
+from packaging.requirements import Requirement
+from importlib.metadata import version as importlib_version
 from telebot import types
 import sys
 import threading
@@ -18,6 +21,13 @@ from importlib import reload
 import sql_worker
 
 import telebot
+
+
+def log_uncaught_exceptions(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logging.error("UNEXPECTED RUNTIME EXCEPTION", exc_info=(exc_type, exc_value, exc_traceback))
 
 
 @dataclass
@@ -62,10 +72,10 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "3.1.2"  # Current bot version
-    CODENAME = "Broadcast BetaRay"
+    VERSION = "3.2"  # Current bot version
+    CODENAME = "Catalyst Core"
     MIN_VERSION = "2.14"  # The minimum version from which you can upgrade to this one without breaking the bot
-    BUILD_DATE = "02.02.2026"  # Bot build date
+    BUILD_DATE = "04.03.2026"  # Bot build date
     ANONYMOUS_ID = 1087968824  # ID value for anonymous user tg
     EASTER_LINK = "https://2girls.1cup.one"  # Link for Easter eggs
     global_timer = 3600  # Value in seconds of duration of votes
@@ -142,6 +152,8 @@ class ConfigData:
             level=logging.INFO,
             format='%(asctime)s %(levelname)s: %(message)s',
             datefmt="%d-%m-%Y %H:%M:%S")
+
+        sys.excepthook = log_uncaught_exceptions
 
         if not os.path.isfile(self.path + "config.ini"):
             print("Config file isn't found! Trying to remake!")
@@ -460,7 +472,9 @@ sqlWorker = sql_worker.SqlWorker(data.path + "database.db", data.SQL_INIT)
 
 
 def init():
+    check_dependency_versions()
     data.sql_worker_get()
+
     try:
         data.bot_id = bot.get_me().id
     except Exception as e:
@@ -484,10 +498,25 @@ def init():
         change_type = "понижение"
     else:
         change_type = ""
+
+    try:
+        info = html_fix(get_last_commit_info().split('\n', maxsplit=1)[1])
+        if len(info) > 2000:
+            info = (info[:2000].rsplit(' ', 1)[0] +
+                    '\n<i>чейнджлог коммита слишком длинный для вывода в сообщении...</i>')
+        info = f'Информация о последних изменениях:\n<blockquote>{info}</blockquote>'
+    except (FileNotFoundError, RuntimeError) as e:
+        if str(e) == "Folder .git not found":
+            logging.warning('The .git folder was not found in the bot directory.')
+        elif str(e) == "Command 'git' not found":
+            logging.warning('The "git" command was not found. Please install Git to view commit history.')
+        info = ('Информация о последних изменениях недоступна.\n'
+                'Подробная информация о причинах ошибки содержится в логах бота.')
+
     update_text = "" if version.parse(get_version) == version.parse(data.VERSION) \
         else f"\nВнимание! Обнаружено {change_type} версии.\n" \
              f"Текущая версия: {data.VERSION}\n" \
-             f"Предыдущая версия: {get_version}"
+             f"Предыдущая версия: {get_version}\n{info}"
 
     sqlWorker.params("version", rewrite_value=data.VERSION)
     logging.info(f'###TELEBOSS {data.VERSION} "{data.CODENAME.upper()}" '
@@ -506,14 +535,60 @@ def init():
             logging.warning("BOT LAUNCHED IN DEBUG MODE!\n***\n"
                             "The bot will ignore the configuration of some parameters "
                             "and will not record changes to them.\n***")
-            bot.send_message(data.main_chat_id, f"Бот запущен в режиме отладки!" + update_text,
-                             message_thread_id=data.thread_id)
+            bot.send_message(data.main_chat_id, f"Бот запущен в режиме отладки!{update_text}",
+                             message_thread_id=data.thread_id, parse_mode='html')
         else:
-            bot.send_message(data.main_chat_id, f"Бот перезапущен." + update_text, message_thread_id=data.thread_id)
+            bot.send_message(data.main_chat_id, f"Бот перезапущен.{update_text}",
+                             message_thread_id=data.thread_id, parse_mode='html')
     except telebot.apihelper.ApiTelegramException as e:
         logging.error(f"Bot was unable to send a launch message and will be closed! "
                       f"Possibly the wrong value for the main chat or topic?\n{e}")
         sys.exit(1)
+
+
+def check_dependency_versions():
+
+    file_name = 'requirements.txt'
+
+    if not os.path.isfile(file_name):
+        logging.warning(f'File "{file_name}" not found. The bot\'s library version check will not be performed.')
+        return
+
+    with open('requirements.txt', 'r') as f:
+
+        for line in f:
+            if not line.strip() or line.strip().startswith('#'):
+                continue
+
+            req = Requirement(line.strip())
+            installed_ver = importlib_version(req.name)
+
+            if not req.specifier.contains(installed_ver, prereleases=True):
+                logging.error(f"{req.name}: installed {installed_ver}, but {req.specifier} is required\n"
+                              "Please update the bot's dependencies before starting work. The bot will close.")
+                sys.exit(1)
+
+
+def get_last_commit_info(count_of_commits=1, commit_index=0):
+
+    if not os.path.isdir('.git'):
+        raise FileNotFoundError("Folder .git not found")
+
+    try:
+        commits_numbers = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'],
+                                                  stderr=subprocess.STDOUT, encoding='utf-8').strip()
+        if commit_index >= int(commits_numbers):
+            raise IndexError(f'Commit index exceeds total count ({commits_numbers})')
+        cmd = ['git', 'log', f'-{count_of_commits}', f'--skip={commit_index}',
+               '--pretty=format:%ad by %an%n%B_2_strip', '--date=local']
+        return (subprocess.check_output(cmd, stderr=subprocess.STDOUT, encoding='utf-8').
+                strip().replace('\n_2_strip\n', '\n\n').replace('_2_strip', '\n'))
+    except FileNotFoundError:
+        raise RuntimeError("Command 'git' not found")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error while running 'git' command: {e}")
+        logging.error(traceback.format_exc())
+        raise RuntimeError(f"Error while running 'git' command: {e}")
 
 
 def auto_clear():
@@ -530,7 +605,7 @@ def auto_clear():
         time.sleep(3600)
 
 
-def extract_arg(text, num):
+def extract_arg(text: str, num: int):
     try:
         return text.split()[num]
     except (IndexError, AttributeError):

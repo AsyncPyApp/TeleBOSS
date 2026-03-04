@@ -8,7 +8,7 @@ import traceback
 from packaging import version
 
 from utils import data, Command
-from poll_engine import PoolEngine
+from poll_engines import PollEngine
 
 META_INFO_TEMPLATE = {
     'name': str,
@@ -62,7 +62,7 @@ class Plugins:
                                       f'The plugin will not be loaded.')
                         continue
                     elif meta_info['type'] == 'vote':
-                        PoolEngine.post_vote_list.update(plugin_class.vote_list)
+                        PollEngine.post_vote_list.update(plugin_class.vote_list)
 
                     if hasattr(plugin_class, 'built_in_remove_list'):
                         for rem_cmd in plugin_class.built_in_remove_list:

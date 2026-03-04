@@ -12,7 +12,7 @@ from telebot import types
 
 import utils
 from utils import data, bot, sqlWorker
-from poll_engine import PreVote, pool_engine
+from poll_engines import PreVote, poll_engine
 
 
 class Invite(PreVote):
@@ -1098,9 +1098,9 @@ class Op(PreVote):
         except telebot.apihelper.ApiTelegramException as e:
             logging.error(f"I can't pin message in chat {message.chat.id}!\n{e}")
         threading.Thread(target=utils.make_mailing, daemon=True,
-                         args=(pool_engine.post_vote_list[self.vote_type].description, message.id,
+                         args=(poll_engine.post_vote_list[self.vote_type].description, message.id,
                                self.current_timer)).start()
-        threading.Thread(target=pool_engine.vote_timer, daemon=True,
+        threading.Thread(target=poll_engine.vote_timer, daemon=True,
                          args=(self.current_timer, self.unique_id(), message)).start()
 
     def arg_fn(self, _):
@@ -2018,7 +2018,7 @@ class Votes(PreVote):
                 thread_id = f'/{record[9]}' if record[9] else '/1'
                 format_chat_id += thread_id
             try:
-                vote_type = pool_engine.post_vote_list[record[2]].description
+                vote_type = poll_engine.post_vote_list[record[2]].description
             except KeyError:
                 vote_type = "INVALID (не загружен плагин?)"
             poll_list = poll_list + f"{number}. https://t.me/{format_chat_id}/{record[1]}, " \

@@ -1,2 +1,2 @@
-pytelegrambotapi>=4.27.0
+pytelegrambotapi>=4.31.0
 packaging>=25.0

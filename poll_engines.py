@@ -21,7 +21,7 @@ class SilentException(Exception):
     pass
 
 
-class PoolEngine:
+class PollEngine:
     vote_abuse = {}
     post_vote_list = {}
 
@@ -92,7 +92,7 @@ class PoolEngine:
         return None
 
 
-pool_engine = PoolEngine()
+poll_engine = PollEngine()
 
 
 class PreVote:
@@ -222,13 +222,13 @@ class PreVote:
         utils.poll_saver(self.unique_id, message_vote)
         if not self.silent:
             threading.Thread(target=utils.make_mailing, daemon=True,
-                             args=(pool_engine.post_vote_list[self.vote_type].description, message_vote.id,
+                             args=(poll_engine.post_vote_list[self.vote_type].description, message_vote.id,
                                    self.current_timer)).start()
             try:
                 bot.pin_chat_message(message_vote.chat.id, message_vote.message_id, disable_notification=True)
             except telebot.apihelper.ApiTelegramException as e:
                 logging.error(f"I can't pin message in chat {message_vote.chat.id}!\n{e}")
-        threading.Thread(target=pool_engine.vote_timer, daemon=True,
+        threading.Thread(target=poll_engine.vote_timer, daemon=True,
                          args=(self.current_timer, self.unique_id, message_vote)).start()
 
     def get_buttons_scheme(self):

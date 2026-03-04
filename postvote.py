@@ -8,7 +8,7 @@ import telebot
 
 import utils
 from utils import data, bot, sqlWorker
-from poll_engine import PostVote, PoolEngine, SilentException, InternalBotException
+from poll_engines import PostVote, PollEngine, SilentException, InternalBotException
 
 
 class UserAdd(PostVote):
@@ -860,4 +860,4 @@ def post_vote_list_init():
         "op setup": OpSetup(),
     }
 
-    PoolEngine.post_vote_list.update(post_vote_list)
+    PollEngine.post_vote_list.update(post_vote_list)

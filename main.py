@@ -12,7 +12,7 @@ import plugin_engine
 import postvote
 import utils
 import prevote
-from poll_engine import pool_engine
+from poll_engines import poll_engine
 from utils import data, bot, sqlWorker, Command
 
 
@@ -60,6 +60,7 @@ class BuildInCommands:
             'overview': Command(self.overview, None),
             'version': Command(self.version, None),
             'plugins': Command(self.plugins, None),
+            'git': Command(self.git, None),
             'niko': Command(self.niko, None),
         }
 
@@ -315,7 +316,7 @@ class BuildInCommands:
             return
 
         try:
-            abuse_vote_timer = int(pool_engine.vote_abuse.get("random"))
+            abuse_vote_timer = int(poll_engine.vote_abuse.get("random"))
         except TypeError:
             abuse_vote_timer = 0
 
@@ -324,7 +325,7 @@ class BuildInCommands:
         if abuse_vote_timer + abuse_random > int(time.time()) or abuse_random < 0:
             return
 
-        pool_engine.vote_abuse.update({"random": int(time.time())})
+        poll_engine.vote_abuse.update({"random": int(time.time())})
 
         msg_id = ""
         for i in range(5):
@@ -474,14 +475,14 @@ class BuildInCommands:
             return
 
         try:
-            abuse_vote_timer = int(pool_engine.vote_abuse.get("abuse" + str(message.from_user.id)))
+            abuse_vote_timer = int(poll_engine.vote_abuse.get("abuse" + str(message.from_user.id)))
         except TypeError:
             abuse_vote_timer = 0
 
         if abuse_vote_timer + 10 > int(time.time()):
             return
 
-        pool_engine.vote_abuse.update({"abuse" + str(message.from_user.id): int(time.time())})
+        poll_engine.vote_abuse.update({"abuse" + str(message.from_user.id): int(time.time())})
 
         try:
             bot.restrict_chat_member(data.main_chat_id, message.reply_to_message.from_user.id,
@@ -770,6 +771,56 @@ class BuildInCommands:
 
 
     @staticmethod
+    def git(message):
+        if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+            return
+
+        try:
+            count = int(utils.extract_arg(message.text, 1))
+        except ValueError:
+            bot.reply_to(message, "Аргумент количества выводимых коммитов не является числом!")
+            return
+        except TypeError:
+            count = 1
+
+        try:
+            index = int(utils.extract_arg(message.text, 2))
+        except ValueError:
+            bot.reply_to(message, "Аргумент порядкового номера коммита не является числом!")
+            return
+        except TypeError:
+            index = 1
+
+        if count <= 0:
+            bot.reply_to(message, "Количество коммитов для вывода не может быть меньше или равно нулю.")
+            return
+
+        if index <= 0:
+            bot.reply_to(message, "Порядковый номер коммита не может быть меньше или равен нулю")
+            return
+
+        try:
+            info = utils.html_fix(utils.get_last_commit_info(count_of_commits=count, commit_index=index - 1))
+            if len(info) > 3800:
+                info = (info[:3800].rsplit(' ', 1)[0] +
+                        '\n<i>чейнджлог коммитов слишком длинный для вывода в сообщении...</i>')
+            info = f'Информация о последних изменениях:\n<blockquote expandable>{info}</blockquote>'
+        except (FileNotFoundError, RuntimeError, IndexError) as e:
+            if str(e) == "Folder .git not found":
+                info = "Папка .git не найдена в рабочем каталоге бота.\nИстория изменений недоступна."
+            elif str(e) == "Command 'git' not found":
+                info = 'Команда "git" не найдена.\nОбратитесь к хостеру бота для установки Git на хостинг.'
+            elif 'Commit index exceeds total count' in str(e):
+                commits_total_count = str(e).rsplit(" ", maxsplit=1)[1]
+                info = f'Порядковый номер коммита превысил общее количество коммитов {commits_total_count}'
+            else:
+                info = ('Ошибка выполнения команды git.\nПодробная информация '
+                        'о причинах ошибки содержится в логах бота.')
+
+        bot.reply_to(message, info, parse_mode='html')
+
+
+    @staticmethod
     def niko(message):
         if not utils.bot_name_checker(message):
             return
@@ -861,7 +912,7 @@ def cancel_vote(call_msg):
                                           text='Вы не можете отменить чужое голосование!', show_alert=True)
                 return
 
-    pool_engine.vote_abuse.clear()
+    poll_engine.vote_abuse.clear()
     sqlWorker.rem_rec(poll[0][0])
     try:
         os.remove(data.path + poll[0][0])
@@ -900,8 +951,8 @@ def cancel_vote(call_msg):
                                           text='Вы не можете закрыть чужой опрос!', show_alert=True)
                 return
 
-    pool_engine.vote_abuse.clear()
-    pool_engine.vote_result(poll[0][0], call_msg.message)
+    poll_engine.vote_abuse.clear()
+    poll_engine.vote_result(poll[0][0], call_msg.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "my_vote")
@@ -1018,8 +1069,8 @@ def op_button(call_msg):
         if call_msg.data == "op!_confirmed":
             button.update({'value': not button['value']})
             sqlWorker.update_poll_votes(poll[0][0], json.dumps(button_data))
-            pool_engine.vote_abuse.clear()
-            pool_engine.vote_result(poll[0][0], call_msg.message)
+            poll_engine.vote_abuse.clear()
+            poll_engine.vote_result(poll[0][0], call_msg.message)
             if poll[0][2] == 'op setup':
                 prevote.Op(call_msg.message, poll)
             else:
@@ -1074,7 +1125,7 @@ def vote_button(call_msg):
                                   text=f'Данный опрос не найден или закрыт.', show_alert=True)
         return
 
-    if pool_engine.get_abuse_timer(call_msg):  # Voting click check
+    if poll_engine.get_abuse_timer(call_msg):  # Voting click check
         return
 
     button_data = json.loads(poll[0][4])
@@ -1150,15 +1201,15 @@ def vote_button(call_msg):
         voting_completed = True
 
     if voting_completed or poll[0][5] <= int(time.time()):
-        pool_engine.vote_abuse.clear()
-        pool_engine.vote_result(poll[0][0], call_msg.message)
+        poll_engine.vote_abuse.clear()
+        poll_engine.vote_result(poll[0][0], call_msg.message)
         return
 
     # Making changes to the message
     if not hidden:
         bot.edit_message_reply_markup(call_msg.message.chat.id, message_id=call_msg.message.id,
                                       reply_markup=utils.make_keyboard(button_data, False))
-    pool_engine.vote_abuse.update({str(call_msg.message.id) + "." + str(call_msg.from_user.id): int(time.time())})
+    poll_engine.vote_abuse.update({str(call_msg.message.id) + "." + str(call_msg.from_user.id): int(time.time())})
 
 
 @bot.callback_query_handler(func=lambda call: "help!_cat" in call.data)
@@ -1227,5 +1278,5 @@ if __name__ == "__main__":
     plugins_command_list = plugin_engine.Plugins(built_in_command_list).commands_final_dict
     utils.init()
     utils.register_commands(plugins_command_list, built_in_command_list)
-    pool_engine.auto_restart_polls()
+    poll_engine.auto_restart_polls()
     bot.infinity_polling()
