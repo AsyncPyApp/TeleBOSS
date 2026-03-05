@@ -890,11 +890,14 @@ def make_mailing(vote_type, message_vote_id, current_timer):
     else:
         format_chat_id = "c/" + str(data.main_chat_id)[4:]
     for subscriber_index in range(len(mailing_list)):
+        if not subscriber_index % 10 and subscriber_index:
+            time.sleep(10)  # Protection against too many requests
         subscriber = mailing_list[subscriber_index][0]
         if bot.get_chat_member(data.main_chat_id, subscriber).status in ("left", "kicked"):
             sqlWorker.mailing(subscriber, remove=True)
             logging.warning(f"The user with ID {subscriber} is no longer a member of "
                             f"the chat and has been excluded from mailing list.")
+            continue
         try:
             bot.send_message(subscriber,
                              f"<b>Было запущено новое голосование!</b>\n\nТип голосования: {vote_type}, "
@@ -905,8 +908,6 @@ def make_mailing(vote_type, message_vote_id, current_timer):
             logging.error(f"Errors sending mailing to user with ID {subscriber}, "
                           f"he will be excluded from the mailing list.\n{e}")
             sqlWorker.mailing(subscriber, remove=True)
-        if not subscriber_index % 10 and subscriber_index:
-            time.sleep(10)  # Protection against too many requests
 
 
 def register_commands(plugins_command_list, built_in_command_list):
@@ -945,3 +946,4 @@ def calc_engine(calc_text, to_send):
         return
     result = result.replace('.', ',') if calc_text.count(',') >= calc_text.count('.') else result
     to_send.put(f"{calc_text}\n=<code>{result}</code>")
+
