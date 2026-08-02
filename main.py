@@ -723,7 +723,8 @@ class BuildInCommands:
 
         plugin_list = "Нет загруженных плагинов"
         if data.plugins:
-            plugin_list = "Список загруженных плагинов: " + ", ".join(data.plugins)
+            plugin_list = ("Список загруженных плагинов: " + ", ".join(data.plugins)
+                           + "\n(для просмотра описания плагинов используйте /plugins)")
 
         reply_text = (
             f"<b>Версия Teleboss {data.VERSION} {data.CODENAME}, дата сборки: {data.BUILD_DATE}\n{plugin_list}\n\n</b>"
@@ -776,7 +777,9 @@ class BuildInCommands:
 
         plugin_list = "Никакие плагины сейчас не загружены."
         if data.plugins:
-            plugin_list = "Список загруженных плагинов: " + ", ".join(data.plugins)
+            plugin_list = (
+                    "Список загруженных плагинов:\n" + "\n".join([f'{num}. {name}\nОписание: {data.plugins[name]}'
+                                                                  for num, name in enumerate(data.plugins, start=1)]))
         bot.reply_to(message, plugin_list)
 
 

@@ -83,9 +83,9 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "3.3"  # Current bot version
+    VERSION = "3.3.1"  # Current bot version
     CODENAME = "Deuterium Discharge"
-    MIN_VERSION = "3.2.1"  # The minimum version from which you can upgrade to this one without breaking the bot
+    MIN_VERSION = "3.3"  # The minimum version from which you can upgrade to this one without breaking the bot
     BUILD_DATE = "02.08.2026"  # Bot build date
     ANONYMOUS_ID = 1087968824  # ID value for anonymous user tg
     EASTER_LINK = "https://2girls.1cup.one"  # Link for Easter eggs
@@ -138,7 +138,7 @@ class ConfigData:
                 "allowed_admins": __ADMIN_RECOMMENDED,
                 "vote_privacy": vote_privacy,
                 "marmalade": marmalade}
-    __plugins = []
+    __plugins = {}
 
     def __init__(self):
 
@@ -395,7 +395,7 @@ class ConfigData:
 
     @plugins.setter
     def plugins(self, value):
-        if not isinstance(value, list):
+        if not isinstance(value, dict):
             return
         self.__plugins = value
 
@@ -597,12 +597,6 @@ def auto_clear():
         for record in records:
             if record[5] + 600 < int(time.time()):
                 sqlWorker.rem_rec(record[0])
-                # Code for backward compatibility, needs to be removed in the future
-                try:
-                    os.remove(data.path + record[0])
-                except IOError:
-                    pass
-                # End of code section for backward compatibility
                 logging.info('Removed deprecated poll "' + record[0] + '"')
         time.sleep(3600)
 

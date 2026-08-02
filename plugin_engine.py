@@ -22,7 +22,7 @@ class Plugins:
 
     def __init__(self, built_in_commands_dict):
 
-        plugin_names = []
+        plugins_dict = {}
         registered_cmd_by_plugins = {}
         build_in_all_commands = self.get_all_prebuild_commands(built_in_commands_dict)
         built_in_commands_clear_dict = {i: j.command_func for i,j in built_in_commands_dict.items()}
@@ -100,15 +100,15 @@ class Plugins:
                             logging.info(f'Registered command "{cmd}" by "{entry}" plugin.')
 
                     self.commands_final_dict.update(plugin_class.plugin_commands_dict)
-                    plugin_names.append(meta_info['name'])
+                    plugins_dict[meta_info['name']] = meta_info['description']
                 except Exception as e:
                     logging.error(f'Module "{entry}" is invalid! The bot will close.')
                     logging.error(e)
                     logging.error(traceback.format_exc())
                     sys.exit(1)
-        if plugin_names:
-            logging.info("Loaded plugins: " + ", ".join(plugin_names))
-            data.plugins = plugin_names
+        if plugins_dict:
+            logging.info("Loaded plugins: " + ", ".join(plugins_dict.keys()))
+            data.plugins = plugins_dict
 
     @staticmethod
     def get_all_prebuild_commands(built_in_commands_dict):

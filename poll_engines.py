@@ -28,6 +28,14 @@ class PollEngine:
         time_now = int(time.time())
         records = sqlWorker.get_all_polls()
         for record in records:
+
+            # Code for backward compatibility, needs to be removed in the future
+            try:
+                os.remove(data.path + record[0])
+            except IOError:
+                pass
+            # End of code section for backward compatibility
+
             if record[5] > time_now:
                 threading.Thread(target=self.vote_timer, daemon=True,
                                  args=(record[5] - time_now, record[0], record[1])).start()
@@ -49,14 +57,6 @@ class PollEngine:
 
         if records[1] != message_vote_id:
             return
-
-        # Code for backward compatibility, needs to be removed in the future
-        try:
-            os.remove(data.path + unique_id)
-        except IOError:
-            logging.error("Failed to clear a poll file!")
-            logging.error(traceback.format_exc())
-        # End of code section for backward compatibility
 
         sqlWorker.rem_rec(unique_id)
 
