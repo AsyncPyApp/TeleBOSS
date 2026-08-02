@@ -72,13 +72,6 @@ class SqlWorker:
         if not records:
             cursor.execute("""INSERT INTO params VALUES (?)""", (json.dumps(recommended),))
 
-        # Temporary code for backward compatibility
-        try:
-            cursor.execute("ALTER TABLE current_polls ADD COLUMN thread_id INTEGER")
-        except sqlite3.OperationalError:
-            pass
-        # End of temporary code block
-
         sqlite_connection.commit()
         cursor.close()
         sqlite_connection.close()

@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import pickle
 import threading
 import time
 import traceback
@@ -29,49 +28,44 @@ class PollEngine:
         time_now = int(time.time())
         records = sqlWorker.get_all_polls()
         for record in records:
-            try:
-                poll = open(data.path + record[0], 'rb')
-                message_vote = pickle.load(poll)
-                poll.close()
-            except (IOError, pickle.UnpicklingError):
-                logging.error(f"Failed to read a poll {record[0]}!")
-                logging.error(traceback.format_exc())
-                continue
             if record[5] > time_now:
                 threading.Thread(target=self.vote_timer, daemon=True,
-                                 args=(record[5] - time_now, record[0], message_vote)).start()
+                                 args=(record[5] - time_now, record[0], record[1])).start()
                 logging.info("Restarted poll " + record[0])
             else:
-                self.vote_result(record[0], message_vote)
+                self.vote_result(record[0], record[1])
 
-    def vote_timer(self, current_timer, unique_id, message_vote):
+    def vote_timer(self, current_timer, unique_id, message_vote_id):
         time.sleep(current_timer)
         self.vote_abuse.clear()
-        self.vote_result(unique_id, message_vote)
+        self.vote_result(unique_id, message_vote_id)
 
-    def vote_result(self, unique_id, message_vote):
+    def vote_result(self, unique_id, message_vote_id):
 
-        records = sqlWorker.get_poll(message_vote.id)
+        records = sqlWorker.get_poll(message_vote_id)
         if not records:
             return
+        records = records[0]
 
-        if records[0][1] != message_vote.id:
+        if records[1] != message_vote_id:
             return
 
+        # Code for backward compatibility, needs to be removed in the future
         try:
             os.remove(data.path + unique_id)
         except IOError:
             logging.error("Failed to clear a poll file!")
             logging.error(traceback.format_exc())
+        # End of code section for backward compatibility
 
         sqlWorker.rem_rec(unique_id)
 
         try:
-            self.post_vote_list[records[0][2]].post_vote(records, message_vote)
+            self.post_vote_list[records[2]].post_vote(records)
         except KeyError:
             logging.error(traceback.format_exc())
             bot.edit_message_text("Ошибка применения результатов голосования. Итоговая функция не найдена!",
-                                  message_vote.chat.id, message_vote.id)
+                                  records[3], records[1])
 
     def get_abuse_timer(self, call_msg):
         try:
@@ -216,10 +210,9 @@ class PreVote:
         if message_vote.message_thread_id and self.message.chat.is_forum:
             topic_id = message_vote.message_thread_id
 
-        sqlWorker.add_poll(self.unique_id, message_vote.id, self.vote_type, self.message.chat.id,
+        sqlWorker.add_poll(self.unique_id, message_vote.id, self.vote_type, message_vote.chat.id,
                            json.dumps(buttons_scheme), int(time.time()) + self.current_timer,
                            json.dumps(self.vote_args), self.current_votes, hidden, topic_id)
-        utils.poll_saver(self.unique_id, message_vote)
         if not self.silent:
             threading.Thread(target=utils.make_mailing, daemon=True,
                              args=(poll_engine.post_vote_list[self.vote_type].description, message_vote.id,
@@ -229,7 +222,7 @@ class PreVote:
             except telebot.apihelper.ApiTelegramException as e:
                 logging.error(f"I can't pin message in chat {message_vote.chat.id}!\n{e}")
         threading.Thread(target=poll_engine.vote_timer, daemon=True,
-                         args=(self.current_timer, self.unique_id, message_vote)).start()
+                         args=(self.current_timer, self.unique_id, message_vote.message_id)).start()
 
     def get_buttons_scheme(self):
         button_scheme = [{"button_type": f"vote!_{i}", "name": i, "user_list": []} for i in ("Да", "Нет")]
@@ -259,12 +252,14 @@ class PostVote:
     is_accept = False
     records = []
     data_list = []
-    message_vote = None
+    message_vote_id = None
+    message_vote_chat_id = None
 
-    def post_vote(self, records, message_vote):
-        self.data_list = json.loads(records[0][6])
-        self.message_vote = message_vote
-        button_data = json.loads(records[0][4])
+    def post_vote(self, records):
+        self.data_list = json.loads(records[6])
+        self.message_vote_id = records[1]
+        self.message_vote_chat_id = records[3]
+        button_data = json.loads(records[4])
         counters_yes = 0
         counters_yes_text = counters_yes
         counters_no = 0
@@ -304,12 +299,12 @@ class PostVote:
                 self.decline()
             self.final_hook(False)
         except (telebot.apihelper.ApiTelegramException, InternalBotException) as e:
-            logging.error(f'Error in poll {records[0][0]} with type "{records[0][2]}", '
-                          f'chat ID {records[0][3]} and message ID {records[0][1]}\n{e}')
+            logging.error(f'Error in poll {records[0]} with type "{records[2]}", '
+                          f'chat ID {records[3]} and message ID {records[1]}\n{e}')
             self.final_hook(True)
         except Exception as e:
-            logging.error(f'Unknown error in poll "{records[0][0]}" with type "{records[0][2]}", '
-                          f'chat ID "{records[0][3]}" and message ID "{records[0][1]}"\n{e}')
+            logging.error(f'Unknown error in poll "{records[0]}" with type "{records[2]}", '
+                          f'chat ID "{records[3]}" and message ID "{records[1]}"\n{e}')
             logging.error(traceback.format_exc())
             self.final_hook(True)
 
@@ -318,7 +313,7 @@ class PostVote:
         for user_id in user_list:
             try:
                 username = utils.username_parser_chat_member(
-                    bot.get_chat_member(self.message_vote.chat.id, user_id), html=True)
+                    bot.get_chat_member(self.message_vote_chat_id, user_id), html=True)
                 if username == "":
                     continue
                 usernames.append(username)
@@ -337,14 +332,17 @@ class PostVote:
 
     def final_hook(self, error=False):
         try:
-            bot.unpin_chat_message(self.message_vote.chat.id, self.message_vote.message_id)
+            bot.unpin_chat_message(self.message_vote_chat_id, self.message_vote_id)
         except telebot.apihelper.ApiTelegramException as e:
-            logging.error(f"I can't unpin message in chat {self.message_vote.chat.id}!\n{e}")
+            logging.error(f"I can't unpin message in chat {self.message_vote_chat_id}!\n{e}")
         try:
             if error:
-                bot.reply_to(self.message_vote, "Голосование завершено с ошибками. Информация сохранена в логи бота.")
+                bot.send_message(self.message_vote_chat_id,
+                                 "Голосование завершено с ошибками. Информация сохранена в логи бота.",
+                                 reply_to_message_id=self.message_vote_id)
             else:
-                bot.reply_to(self.message_vote, "Голосование завершено!")
+                bot.send_message(self.message_vote_chat_id, "Голосование завершено!",
+                                 reply_to_message_id=self.message_vote_id)
         except telebot.apihelper.ApiTelegramException:
             logging.error(traceback.format_exc())
 
@@ -353,8 +351,8 @@ class PostVote:
         return self._description
 
     def change_rate(self, change):
-        if all([not bot.get_chat_member(self.message_vote.chat.id, self.data_list[0]).user.is_bot,
-                not bot.get_chat_member(self.message_vote.chat.id, self.data_list[0]).status == "restricted",
+        if all([not bot.get_chat_member(self.message_vote_chat_id, self.data_list[0]).user.is_bot,
+                not bot.get_chat_member(self.message_vote_chat_id, self.data_list[0]).status == "restricted",
                 data.rate]):
             sqlWorker.update_rate(self.data_list[0], change)
             return True

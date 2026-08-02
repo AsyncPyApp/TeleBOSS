@@ -1092,7 +1092,6 @@ class Op(PreVote):
         sqlWorker.add_poll(self.unique_id(), message.id, self.vote_type, message.chat.id,
                            json.dumps(buttons_scheme), int(time.time()) + self.current_timer,
                            json.dumps(self.vote_args()), self.current_votes, self.hidden, topic_id)
-        utils.poll_saver(self.unique_id(), message)
         try:
             bot.pin_chat_message(message.chat.id, message.id, disable_notification=True)
         except telebot.apihelper.ApiTelegramException as e:
@@ -1101,7 +1100,7 @@ class Op(PreVote):
                          args=(poll_engine.post_vote_list[self.vote_type].description, message.id,
                                self.current_timer)).start()
         threading.Thread(target=poll_engine.vote_timer, daemon=True,
-                         args=(self.current_timer, self.unique_id(), message)).start()
+                         args=(self.current_timer, self.unique_id(), message.id)).start()
 
     def arg_fn(self, _):
         return

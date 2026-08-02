@@ -14,7 +14,8 @@ META_INFO_TEMPLATE = {
     'name': str,
     'type': str,
     'version-min': str,
-    'version-max': str
+    'version-target': str,
+    'description': str
 }
 
 class Plugins:
@@ -52,9 +53,9 @@ class Plugins:
                     if not self.meta_is_valid(meta_info, entry):
                         continue
                     if any([version.parse(meta_info['version-min']) > version.parse(data.VERSION),
-                            version.parse(meta_info['version-max']) < version.parse(data.VERSION)]):
+                            version.parse(meta_info['version-target']) < version.parse(data.VERSION)]):
                         logging.error(f'Plugin "{entry}" need bot version {meta_info["version-min"]} '
-                                      f'- {meta_info["version-max"]}, current is {data.VERSION}. '
+                                      f'- {meta_info["version-target"]}, current is {data.VERSION}. '
                                       f'The plugin will not be loaded.')
                         continue
                     if meta_info['type'] not in ('simple', 'vote'):

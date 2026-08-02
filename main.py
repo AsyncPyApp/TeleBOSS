@@ -271,6 +271,7 @@ class BuildInCommands:
                     "member": "участник"}
 
         user_id, username, is_bot = utils.reply_msg_target(target_msg)
+        user_status = bot.get_chat_member(data.main_chat_id, user_id).status
 
         if user_id == data.ANONYMOUS_ID:
             bot.reply_to(message, "Данный пользователь является анонимным администратором. "
@@ -290,7 +291,7 @@ class BuildInCommands:
                            f"\nПодписка на рассылку: {mailing_status}"
 
         until_date = ""
-        if bot.get_chat_member(data.main_chat_id, user_id).status in ("kicked", "restricted"):
+        if user_status in ("kicked", "restricted"):
             if bot.get_chat_member(data.main_chat_id, user_id).until_date == 0:
                 until_date = "\nОсталось до снятия ограничений: ограничен бессрочно"
             else:
@@ -304,8 +305,15 @@ class BuildInCommands:
             abuse_text = ("\nТаймаут абуза инвайта для пользователя: "
                           f"{utils.formatted_timer(abuse_chk - int(time.time()))}")
 
+        restricted_status = ''
+        if user_status == 'restricted':
+            if bot.get_chat_member(data.main_chat_id, user_id).is_member:
+                restricted_status = ', участник чата'
+            else:
+                restricted_status = ', не находится в чате'
+
         bot.reply_to(message, f"<b>Пользователь {utils.html_fix(username)}:</b>\n"
-                              f"Статус: {statuses.get(bot.get_chat_member(data.main_chat_id, user_id).status)}\n"
+                              f"Статус: {statuses.get(user_status)}{restricted_status}\n"
                               f"ID пользователя: <code>{user_id}</code>"
                               f"{until_date}{abuse_text}{not_bot_info}", parse_mode='html')
 
@@ -631,8 +639,9 @@ class BuildInCommands:
 
     @staticmethod
     def start(message):
+
         cmd_text = message.text.split()[0]
-        if not ("@" in cmd_text and "@" + bot.get_me().username in cmd_text) and ("@" in cmd_text):
+        if not cmd_text.endswith(f"@{bot.get_me().username}") and "@" in cmd_text:
             return
 
         if data.main_chat_id == -1:
@@ -646,15 +655,16 @@ class BuildInCommands:
         elif message.chat.id == data.main_chat_id:
             bot.reply_to(message, data.EASTER_LINK, disable_web_page_preview=True)
         elif message.chat.id == message.from_user.id:
-            if bot.get_chat_member(data.main_chat_id, message.from_user.id).status == "left":
+            user_status = bot.get_chat_member(data.main_chat_id, message.from_user.id).status
+            if user_status == "left":
                 bot.reply_to(message, "Бот работает. Вы можете продолжить, если уверены в своих действиях.")
-            elif bot.get_chat_member(data.main_chat_id, message.from_user.id).status == "kicked":
+            elif user_status == "kicked":
                 bot.reply_to(message, "Сейчас вы заблокированы в администрируемом мной чате. "
                                       "Вы можете продолжить, если уверены в своих действиях.")
-            elif bot.get_chat_member(data.main_chat_id, message.from_user.id).status == "restricted":
+            elif user_status == "restricted":
                 bot.reply_to(message, "Сейчас вы имеете ограничения в администрируемом мной чате. "
                                       "Вы можете продолжить, если уверены в своих действиях.")
-            elif bot.get_chat_member(data.main_chat_id, message.from_user.id).status == "creator":
+            elif user_status == "creator":
                 bot.reply_to(message, "Владыка, давайте без формальностей, пожалуйста.")
             else:
                 bot.reply_to(message, "Вам больше ничего не нужно делать, вы уже в чате.")
@@ -952,7 +962,7 @@ def cancel_vote(call_msg):
                 return
 
     poll_engine.vote_abuse.clear()
-    poll_engine.vote_result(poll[0][0], call_msg.message)
+    poll_engine.vote_result(poll[0][0], call_msg.message.id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "my_vote")
@@ -1070,7 +1080,7 @@ def op_button(call_msg):
             button.update({'value': not button['value']})
             sqlWorker.update_poll_votes(poll[0][0], json.dumps(button_data))
             poll_engine.vote_abuse.clear()
-            poll_engine.vote_result(poll[0][0], call_msg.message)
+            poll_engine.vote_result(poll[0][0], call_msg.message.id)
             if poll[0][2] == 'op setup':
                 prevote.Op(call_msg.message, poll)
             else:
@@ -1202,7 +1212,7 @@ def vote_button(call_msg):
 
     if voting_completed or poll[0][5] <= int(time.time()):
         poll_engine.vote_abuse.clear()
-        poll_engine.vote_result(poll[0][0], call_msg.message)
+        poll_engine.vote_result(poll[0][0], call_msg.message.id)
         return
 
     # Making changes to the message

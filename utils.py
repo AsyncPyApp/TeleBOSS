@@ -3,7 +3,6 @@ import hashlib
 import json
 import logging
 import os
-import pickle
 import subprocess
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -24,10 +23,22 @@ import telebot
 
 
 def log_uncaught_exceptions(exc_type, exc_value, exc_traceback):
+
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
+
     logging.error("UNEXPECTED RUNTIME EXCEPTION", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+def log_thread_exceptions(args):
+
+    thread_name = args.thread.name if args.thread else "Unknown Thread"
+
+    logging.error(
+        f"UNEXPECTED EXCEPTION IN THREAD '{thread_name}'",
+        exc_info=(args.exc_type, args.exc_value, args.exc_traceback)
+    )
 
 
 @dataclass
@@ -72,10 +83,10 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "3.2.1"  # Current bot version
-    CODENAME = "Catalyst Core"
-    MIN_VERSION = "2.14"  # The minimum version from which you can upgrade to this one without breaking the bot
-    BUILD_DATE = "04.03.2026"  # Bot build date
+    VERSION = "3.3"  # Current bot version
+    CODENAME = "Deuterium Discharge"
+    MIN_VERSION = "3.2.1"  # The minimum version from which you can upgrade to this one without breaking the bot
+    BUILD_DATE = "02.08.2026"  # Bot build date
     ANONYMOUS_ID = 1087968824  # ID value for anonymous user tg
     EASTER_LINK = "https://2girls.1cup.one"  # Link for Easter eggs
     global_timer = 3600  # Value in seconds of duration of votes
@@ -154,6 +165,7 @@ class ConfigData:
             datefmt="%d-%m-%Y %H:%M:%S")
 
         sys.excepthook = log_uncaught_exceptions
+        threading.excepthook = log_thread_exceptions
 
         if not os.path.isfile(self.path + "config.ini"):
             print("Config file isn't found! Trying to remake!")
@@ -229,18 +241,6 @@ class ConfigData:
         self.global_timer = sqlWorker.params("timer")
         self.global_timer_ban = sqlWorker.params("timer_ban")
         self.vote_privacy = sqlWorker.params("vote_privacy")
-        # Start of backwards compatible code
-        if not self.admin_fixed:
-            admin_allowed = sqlWorker.params("allowed_admins")
-            if not isinstance(admin_allowed, dict):
-                sqlWorker.params("allowed_admins", rewrite_value=self.__ADMIN_RECOMMENDED)
-            elif admin_allowed.get("can_manage_chat"):
-                admin_allowed.pop("can_manage_chat")
-                sqlWorker.params("allowed_admins", rewrite_value=admin_allowed)
-                self.admin_allowed = admin_allowed
-            else:
-                self.admin_allowed = admin_allowed
-        # End of backwards compatible code
         if self.chat_mode == "mixed":
             self.binary_chat_mode = sqlWorker.params("public_mode")
 
@@ -597,10 +597,12 @@ def auto_clear():
         for record in records:
             if record[5] + 600 < int(time.time()):
                 sqlWorker.rem_rec(record[0])
+                # Code for backward compatibility, needs to be removed in the future
                 try:
                     os.remove(data.path + record[0])
                 except IOError:
                     pass
+                # End of code section for backward compatibility
                 logging.info('Removed deprecated poll "' + record[0] + '"')
         time.sleep(3600)
 
@@ -784,15 +786,6 @@ def bot_name_checker(message, get_chat=False) -> bool:
 
     cmd_list = cmd_text.split('@', maxsplit=1)
     return len(cmd_list) == 1 or bot.get_me().username == cmd_list[-1]
-
-
-def poll_saver(unique_id, message_vote):
-    try:
-        with open(data.path + unique_id, 'wb') as poll:
-            pickle.dump(message_vote, poll, protocol=4)
-    except (IOError, pickle.PicklingError):
-        logging.error("Failed to picking a poll! You will not be able to resume the timer after restarting the bot!")
-        logging.error(traceback.format_exc())
 
 
 def allowed_list(locked=False):
