@@ -11,17 +11,14 @@ import sys
 from pathlib import Path
 
 import pytest
-from packaging.version import parse as parse_version
+
+from helpers import assert_soft_version_order
+
+# Re-export for older imports / convenience.
+__all__ = ["assert_soft_version_order"]
 
 _FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 _SMOKE_TEMPLATE = _FIXTURES_DIR / "smoke_config.ini.template"
-
-
-def assert_soft_version_order(min_version: str, version: str) -> None:
-    """Soft VERSION gate: MIN_VERSION <= VERSION via packaging.version."""
-    assert isinstance(min_version, str) and min_version.strip()
-    assert isinstance(version, str) and version.strip()
-    assert parse_version(min_version) <= parse_version(version)
 
 
 @pytest.fixture(scope="session")
@@ -63,3 +60,15 @@ def runtime_bot(teleboss_runtime):  # noqa: ANN001
 @pytest.fixture(scope="session")
 def runtime_data(teleboss_runtime):  # noqa: ANN001
     return teleboss_runtime.data
+
+
+@pytest.fixture(scope="session", autouse=True)
+def poll_engine_snapshot(teleboss_runtime):  # noqa: ANN001
+    """Capture post_vote_list emptiness before any registry/plugin init in the suite."""
+    from teleboss.voting.engine import PollEngine
+
+    return {
+        "PollEngine": PollEngine,
+        "id": id(PollEngine.post_vote_list),
+        "was_empty": len(PollEngine.post_vote_list) == 0,
+    }

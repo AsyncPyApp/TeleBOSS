@@ -6,7 +6,7 @@ import re
 import sys
 from pathlib import Path
 
-from conftest import assert_soft_version_order
+from helpers import assert_soft_version_order
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _TESTS_DIR = Path(__file__).resolve().parent
