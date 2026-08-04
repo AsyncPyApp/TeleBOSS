@@ -1,0 +1,25 @@
+[Chat]
+token = 0000000000:SMOKE_DUMMY_TOKEN_TEST
+chat-id = init
+votes-mode = 3
+wait-timer = 30
+kill-mode = 2
+fixed-rules = false
+rate = true
+admin-fixed = false
+chat-mode = mixed
+thread-id = none
+
+[Admin-rules]
+can-change-info = false
+can-delete-messages = false
+can-invite-users = true
+can-restrict-members = false
+can-pin-messages = true
+can-promote-members = false
+is-anonymous = false
+can-manage-video-chats = true
+can-manage-topics = true
+can-post-stories = true
+can-edit-stories = false
+can-delete-stories = false
