@@ -4,6 +4,13 @@ Telegram-бот для модерации чатов через голосова
 
 Сейчас **3.3.2** «Deuterium Discharge».
 
+## Происхождение
+
+Это **самостоятельный** репозиторий (своя линия развития), а не активный форк для синхронизации с upstream.
+
+Исходный TeleBOSS создал **[Allnorm](https://github.com/Allnorm)** (aka DvadCat): [Allnorm/TeleBOSS](https://github.com/Allnorm/TeleBOSS).  
+История коммитов и changelog сохранены в дань уважения автору — без них этого проекта не было бы.
+
 ## Запуск
 
 ```bash

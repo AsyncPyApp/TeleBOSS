@@ -817,7 +817,8 @@ class BuildInCommands:
             return
 
         bot.reply_to(message, f'TeleBOSS, версия {data.VERSION} "{data.CODENAME}"\nДата сборки: {data.BUILD_DATE}\n'
-                              f"Created by Allnorm aka DvadCat")
+                              f"Создан Allnorm aka DvadCat\n"
+                              f"Самостоятельная линия развития (AsyncPyApp)")
 
 
     @staticmethod
