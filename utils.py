@@ -9,7 +9,7 @@ from typing import Callable, Optional
 
 from packaging import version
 from packaging.requirements import Requirement
-from importlib.metadata import version as importlib_version
+from importlib.metadata import version as importlib_version, PackageNotFoundError
 from telebot import types
 import sys
 import threading
@@ -382,7 +382,8 @@ class ConfigData:
         for name, value in self.__ADMIN_RECOMMENDED.items():
             config.set("Admin-rules", name.replace("_", "-"), str(value).lower())
         try:
-            config.write(open(self.path + "config.ini", "w"))
+            with open(self.path + "config.ini", "w") as config_file:
+                config.write(config_file)
             print("New config file was created successful")
         except IOError:
             print("ERR: Bot cannot write new config file and will close")
@@ -505,7 +506,7 @@ def init():
             info = (info[:2000].rsplit(' ', 1)[0] +
                     '\n<i>чейнджлог коммита слишком длинный для вывода в сообщении...</i>')
         info = f'Информация о последних изменениях:\n<blockquote>{info}</blockquote>'
-    except (FileNotFoundError, RuntimeError) as e:
+    except (FileNotFoundError, RuntimeError, IndexError) as e:
         if str(e) == "Folder .git not found":
             logging.warning('The .git folder was not found in the bot directory.')
         elif str(e) == "Command 'git' not found":
@@ -560,8 +561,18 @@ def check_dependency_versions():
             if not line.strip() or line.strip().startswith('#'):
                 continue
 
-            req = Requirement(line.strip())
-            installed_ver = importlib_version(req.name)
+            try:
+                req = Requirement(line.strip())
+            except Exception:
+                logging.warning(f'Unable to parse requirement line "{line.strip()}", it will be skipped.')
+                continue
+
+            try:
+                installed_ver = importlib_version(req.name)
+            except PackageNotFoundError:
+                logging.error(f"{req.name}: package is not installed\n"
+                              "Please install the bot's dependencies before starting work. The bot will close.")
+                sys.exit(1)
 
             if not req.specifier.contains(installed_ver, prereleases=True):
                 logging.error(f"{req.name}: installed {installed_ver}, but {req.specifier} is required\n"
@@ -798,7 +809,7 @@ def welcome_msg_get(username, message):
     except FileNotFoundError:
         logging.warning("file \"welcome.txt\" isn't found. The standard welcome message will be used.")
         welcome_msg = data.welcome_default.format(username, message.chat.title)
-    except (IOError, IndexError):
+    except (IOError, IndexError, KeyError, ValueError):
         logging.error("file \"welcome.txt\" isn't readable. The standard welcome message will be used.")
         logging.error(traceback.format_exc())
         welcome_msg = data.welcome_default.format(username, message.chat.title)
@@ -819,7 +830,8 @@ def write_init_chat(message):
         else:
             thread_ = " "
             config.set("Chat", "thread-id", "none")
-        config.write(open(data.path + "config.ini", "w"))
+        with open(data.path + "config.ini", "w") as config_file:
+            config.write(config_file)
         bot.reply_to(message, f"ID чата{thread_}сохранён. "
                               "Теперь требуется перезапустить бота для перехода в нормальный режим.")
     except Exception as e:
@@ -930,6 +942,15 @@ def calc_engine(calc_text, to_send):
         else:
             logging.error(traceback.format_exc())
             to_send.put("Неизвестная ошибка вычисления! Информация сохранена в логи бота.")
+        return
+    except (OverflowError, MemoryError, RecursionError):
+        to_send.put("Результат слишком большой для вычисления.")
+        return
+    except Exception:
+        # Без этой ветки упавший дочерний процесс оставит очередь пустой,
+        # и вызывающий поток заблокируется на to_send.get()
+        logging.error(traceback.format_exc())
+        to_send.put("Неизвестная ошибка вычисления! Информация сохранена в логи бота.")
         return
     result = result.replace('.', ',') if calc_text.count(',') >= calc_text.count('.') else result
     to_send.put(f"{calc_text}\n=<code>{result}</code>")

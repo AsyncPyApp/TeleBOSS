@@ -299,7 +299,7 @@ class GlobalOp(PostVote):
         if not data.admin_fixed:
             sqlWorker.params("allowed_admins", self.data_list[0])
         bot.edit_message_text("Разрешённые для администраторов права успешно изменены на следующие:\n"
-                              + utils.allowed_list(self.data_list[0]) + self.votes_counter,
+                              + utils.allowed_list() + self.votes_counter,
                               self.message_vote_chat_id, self.message_vote_id)
         return
 
@@ -632,7 +632,7 @@ class RandomCooldown(PostVote):
                                   self.message_vote_chat_id, self.message_vote_id)
 
     def decline(self):
-        if self.data_list[0] == 1:
+        if self.data_list[0] == -1:
             bot.edit_message_text(f"Вопрос отключения команды /random отклонён."
                                   + self.votes_counter, self.message_vote_chat_id, self.message_vote_id)
         else:

@@ -1,0 +1,18 @@
+# Секреты и локальная конфигурация (содержит токен бота)
+config.ini
+.env
+
+# Данные времени выполнения
+database.db
+*.db
+logging.log
+*.log
+tmp_img
+welcome.txt
+rules.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

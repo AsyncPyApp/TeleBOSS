@@ -80,7 +80,7 @@ class Invite(PreVote):
         self.vote_text = ("Тема голосования: заявка на вступление от пользователя <a href=\"tg://user?id="
                           + str(self.message.from_user.id) + "\">"
                           + utils.username_parser(self.message, True) + "</a>.\n"
-                          + "Сообщение от пользователя: " + msg_from_usr + ".")
+                          + "Сообщение от пользователя: " + utils.html_fix(msg_from_usr) + ".")
         self.vote_args = [self.message.chat.id, utils.username_parser(self.message), self.message.from_user.id]
         self.poll_maker(add_user=True, vote_type="invite")
 
@@ -171,8 +171,8 @@ class Ban(PreVote):
 
         self.ban_reason = "" if not self.ban_reason else "\nПовод блокировки: " + self.ban_reason
 
-        self.vote_text = f"Тема голосования: {vote_theme} {self.reply_username}" + \
-                         date_unban + self.ban_reason + ban_timer_text + \
+        self.vote_text = f"Тема голосования: {vote_theme} {utils.html_fix(self.reply_username)}" + \
+                         date_unban + utils.html_fix(self.ban_reason) + ban_timer_text + \
                          f"\nИнициатор голосования: {utils.username_parser(self.message, True)}."
 
         self.vote_args = [self.reply_user_id, self.reply_username, utils.username_parser(self.message),
@@ -267,8 +267,8 @@ class Mute(PreVote):
 
         self.ban_reason = "" if not self.ban_reason else "\nПовод блокировки: " + self.ban_reason
 
-        self.vote_text = (f"Тема голосования: {vote_theme} {self.reply_username}" +
-                          date_unban + self.ban_reason + ban_timer_text +
+        self.vote_text = (f"Тема голосования: {vote_theme} {utils.html_fix(self.reply_username)}" +
+                          date_unban + utils.html_fix(self.ban_reason) + ban_timer_text +
                           f"\nИнициатор голосования: {utils.username_parser(self.message, True)}.")
         self.vote_args = [self.reply_user_id, self.reply_username,
                           utils.username_parser(self.message), 0, restrict_timer, self.ban_reason]
@@ -308,7 +308,8 @@ class Unban(PreVote):
         if self.is_voting_exist():
             return
 
-        self.vote_text = ("Тема голосования: снятие ограничений с пользователя " + self.reply_username +
+        self.vote_text = ("Тема голосования: снятие ограничений с пользователя "
+                          + utils.html_fix(self.reply_username) +
                           f".\nИнициатор голосования: {utils.username_parser(self.message, True)}.")
         self.vote_args = [self.reply_user_id, self.reply_username, utils.username_parser(self.message)]
         self.poll_maker()
@@ -395,7 +396,7 @@ class Thresholds(PreVote):
         self.pre_vote(thr_value, "threshold")
 
     def ban(self, thr_value):
-        self.pre_vote(thr_value, "threshold")
+        self.pre_vote(thr_value, "threshold_ban")
 
     def min(self, thr_value):
         if not data.debug:
@@ -649,7 +650,7 @@ class Rating(PreVote):
             return
 
         self.vote_text = (f"Тема голосования: {mode_text} "
-                          f"социального рейтинга пользователя {self.reply_username}"
+                          f"социального рейтинга пользователя {utils.html_fix(self.reply_username)}"
                           f".\nИнициатор голосования: {utils.username_parser(self.message, True)}.")
         self.vote_args = [self.reply_username, self.message.reply_to_message.from_user.id,
                           mode, utils.username_parser(self.message)]
@@ -661,6 +662,10 @@ class Rating(PreVote):
     def rate_top(self):
         rate_msg = bot.reply_to(self.message, "Сборка рейтинга, ожидайте...")
         rates = sqlWorker.get_all_rates()
+        if rates is None:
+            bot.edit_message_text("Ещё ни у одного пользователя нет социального рейтинга!",
+                                  rate_msg.chat.id, rate_msg.id)
+            return
         rates = sorted(rates, key=lambda rate: rate[1], reverse=True)
         rate_text = "Список пользователей по социальному рейтингу:"
         user_counter = 1
@@ -679,11 +684,6 @@ class Rating(PreVote):
                               f'His rating will be cleared.\n{e}')
                 sqlWorker.clear_rate(user_rate[0])
                 continue
-
-        if rates is None:
-            bot.edit_message_text(self.message, "Ещё ни у одного пользователя нет социального рейтинга!",
-                                  rate_msg.chat.id, rate_msg.id)
-            return
 
         bot.edit_message_text(rate_text, chat_id=rate_msg.chat.id,
                               message_id=rate_msg.id, parse_mode='html')
@@ -747,7 +747,7 @@ class Whitelist(PreVote):
         if is_whitelist:
             bot.reply_to(self.message, f"Пользователь {self.reply_username} уже есть в вайтлисте!")
             return
-        self.add_remove(f"добавление пользователя {self.reply_username} в вайтлист")
+        self.add_remove(f"добавление пользователя {utils.html_fix(self.reply_username)} в вайтлист")
 
     def remove(self):
         if utils.extract_arg(self.msg_txt, 2) is not None:
@@ -757,7 +757,7 @@ class Whitelist(PreVote):
         if not is_whitelist:
             bot.reply_to(self.message, f"Пользователя {self.reply_username} нет в вайтлисте!")
             return
-        self.add_remove(f"удаление пользователя {self.reply_username} из вайтлиста")
+        self.add_remove(f"удаление пользователя {utils.html_fix(self.reply_username)} из вайтлиста")
 
     def add_remove(self, whitelist_text):
         if self.reply_user_id in [data.bot_id, data.ANONYMOUS_ID]:
@@ -847,7 +847,7 @@ class MessageRemover(PreVote):
         self.unique_id = str(self.message.reply_to_message.message_id) + "_delmsg"
         if self.is_voting_exist():
             return
-        self.vote_text = (f"Тема голосования: удаление сообщения пользователя {self.reply_username}"
+        self.vote_text = (f"Тема голосования: удаление сообщения пользователя {utils.html_fix(self.reply_username)}"
                           f".\nИнициатор голосования: {utils.username_parser(self.message, True)}." + self.warn)
         self.vote_args = [self.message.reply_to_message.message_id, self.reply_username, self.silent]
         self.poll_maker(silent=self.silent)
@@ -1461,8 +1461,8 @@ class Avatar(PreVote):
             return
 
         try:
-            tmp_img = open(data.path + 'tmp_img', 'wb')
-            tmp_img.write(file_buffer)
+            with open(data.path + 'tmp_img', 'wb') as tmp_img:
+                tmp_img.write(file_buffer)
         except Exception as e:
             logging.error((str(e)))
             logging.error(traceback.format_exc())
@@ -1637,7 +1637,8 @@ class NewUserChecker(PreVote):
             return
 
         until_time = self.abuse_time[1] * 2 if self.abuse_time[1] != 0 else 300
-        self.vote_text = (f"Требуется подтверждение вступления нового пользователя {self.reply_username}, "
+        self.vote_text = ("Требуется подтверждение вступления нового пользователя "
+                          f"{utils.html_fix(self.reply_username)}, "
                           f"в противном случае он будет кикнут на {utils.formatted_timer(until_time)}")
         self.poll_maker(current_timer=900,
                         vote_args=[self.reply_username, self.reply_user_id, "пользователя", until_time])
@@ -2013,14 +2014,15 @@ class Votes(PreVote):
         for record in records:
             if record[3] != self.message.chat.id:
                 continue
+            record_chat_id = format_chat_id
             if self.message.chat.is_forum:
                 thread_id = f'/{record[9]}' if record[9] else '/1'
-                format_chat_id += thread_id
+                record_chat_id = format_chat_id + thread_id
             try:
                 vote_type = poll_engine.post_vote_list[record[2]].description
             except KeyError:
                 vote_type = "INVALID (не загружен плагин?)"
-            poll_list = poll_list + f"{number}. https://t.me/{format_chat_id}/{record[1]}, " \
+            poll_list = poll_list + f"{number}. https://t.me/{record_chat_id}/{record[1]}, " \
                                     f"тип - {vote_type}, " \
                                     f"до завершения – {utils.formatted_timer(record[5] - int(time.time()))}\n"
             number = number + 1

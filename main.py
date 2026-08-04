@@ -2,6 +2,7 @@ import json
 import logging
 import multiprocessing
 import os
+import queue
 import random
 import time
 import traceback
@@ -565,7 +566,11 @@ class BuildInCommands:
         if utils.topic_reply_fix(message.reply_to_message):
             user_id = message.reply_to_message.from_user.id
         elif utils.extract_arg(message.text, 1) is not None:
-            user_id = utils.extract_arg(message.text, 1)
+            try:
+                user_id = int(utils.extract_arg(message.text, 1))
+            except ValueError:
+                bot.reply_to(message, "Указан неверный User ID.")
+                return
         else:
             bot.reply_to(message, "Требуется реплейнуть сообщение удалённого аккаунта "
                                   "или ввести ID аккаунта аргументом команды.")
@@ -631,7 +636,13 @@ class BuildInCommands:
             return
 
         try:
-            bot.reply_to(message, to_send.get(), parse_mode='html')
+            calc_result = to_send.get(timeout=5)
+        except queue.Empty:
+            bot.reply_to(message, "Неизвестная ошибка вычисления! Информация сохранена в логи бота.")
+            return
+
+        try:
+            bot.reply_to(message, calc_result, parse_mode='html')
         except telebot.apihelper.ApiTelegramException as e:
             if 'message is too long' in str(e):
                 bot.reply_to(message, "Результат слишком большой для отправки.")
@@ -943,7 +954,7 @@ def cancel_vote(call_msg):
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "close")
-def cancel_vote(call_msg):
+def close_vote(call_msg):
     if data.main_chat_id == -1:  # Проверка на init mode
         return
 
@@ -1071,7 +1082,7 @@ def op_button(call_msg):
                 return
 
     if call_msg.data == "op!_close":
-        cancel_vote(call_msg)
+        close_vote(call_msg)
         return
 
     # The ability to create checklists for anonymous admins remains, but without the ability to verify them
