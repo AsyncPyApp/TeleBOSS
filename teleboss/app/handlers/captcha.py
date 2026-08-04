@@ -1,7 +1,7 @@
 import telebot
 
-import utils
-from utils import data, bot, sqlWorker
+from teleboss.shared.access import welcome_msg_get
+from teleboss.shared.runtime import bot, data, sqlWorker
 
 
 @bot.callback_query_handler(func=lambda call: "captcha" in call.data)
@@ -35,7 +35,7 @@ def captcha_buttons(call_msg):
         return
 
     try:
-        bot.edit_message_text(utils.welcome_msg_get(data_list[0][3], call_msg.message), call_msg.message.chat.id,
+        bot.edit_message_text(welcome_msg_get(data_list[0][3], call_msg.message), call_msg.message.chat.id,
                               call_msg.message.message_id)
     except telebot.apihelper.ApiTelegramException:
         pass

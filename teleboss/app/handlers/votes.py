@@ -4,15 +4,16 @@ import time
 
 import telebot
 
-import utils
-from poll_engines import poll_engine
-from utils import data, bot, sqlWorker
+from teleboss.shared.parsers import html_fix, username_parser_chat_member
+from teleboss.shared.runtime import bot, data, sqlWorker
+from teleboss.shared.vote_ui import get_hash, make_keyboard
+from teleboss.voting.engine import poll_engine
 
 
 def call_msg_chk(call_msg):
     records = sqlWorker.get_poll(call_msg.message.id)
     if not records:
-        bot.edit_message_text(utils.html_fix(call_msg.message.text)
+        bot.edit_message_text(html_fix(call_msg.message.text)
                               + "\n\n<b>Голосование не найдено в БД и закрыто.</b>",
                               call_msg.message.chat.id, call_msg.message.id, parse_mode='html')
         try:
@@ -50,7 +51,7 @@ def cancel_vote(call_msg):
         os.remove(data.path + poll[0][0])
     except IOError:
         pass
-    bot.edit_message_text(utils.html_fix(call_msg.message.text)
+    bot.edit_message_text(html_fix(call_msg.message.text)
                           + "\n\n<b>Голосование было отменено автором голосования.</b>",
                           call_msg.message.chat.id, call_msg.message.id, parse_mode="html")
     bot.reply_to(call_msg.message, "Голосование было отменено.")
@@ -101,7 +102,7 @@ def my_vote(call_msg):
         return
 
     button_data = json.loads(poll[0][4])
-    user_hash = utils.get_hash(call_msg.from_user.id, call_msg.chat_instance, button_data)
+    user_hash = get_hash(call_msg.from_user.id, call_msg.chat_instance, button_data)
 
     for button in button_data:
         if "vote!" in button["button_type"]:
@@ -133,7 +134,7 @@ def user_votes(call_msg):
             answer_user_list = []
             for user_id in button["user_list"]:
                 try:
-                    username = utils.username_parser_chat_member(bot.get_chat_member(call_msg.message.chat.id, user_id),
+                    username = username_parser_chat_member(bot.get_chat_member(call_msg.message.chat.id, user_id),
                                                                  html=False, need_username=False)
                     if username == "":
                         continue
@@ -200,7 +201,7 @@ def vote_button(call_msg):
         return
 
     button_data = json.loads(poll[0][4])
-    user_hash = utils.get_hash(call_msg.from_user.id, call_msg.chat_instance, button_data)
+    user_hash = get_hash(call_msg.from_user.id, call_msg.chat_instance, button_data)
 
     last_choice = None
     current_choice = call_msg.data.split("_")[1]
@@ -279,5 +280,5 @@ def vote_button(call_msg):
     # Making changes to the message
     if not hidden:
         bot.edit_message_reply_markup(call_msg.message.chat.id, message_id=call_msg.message.id,
-                                      reply_markup=utils.make_keyboard(button_data, False))
+                                      reply_markup=make_keyboard(button_data, False))
     poll_engine.vote_abuse.update({str(call_msg.message.id) + "." + str(call_msg.from_user.id): int(time.time())})

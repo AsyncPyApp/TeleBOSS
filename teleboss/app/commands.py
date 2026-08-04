@@ -9,10 +9,51 @@ import traceback
 
 import telebot
 
-import prevote
-import utils
-from poll_engines import poll_engine
-from utils import data, bot, sqlWorker, Command
+from teleboss.domain.admin.prevote import (
+    Avatar,
+    Deop,
+    Description,
+    OpSetup,
+    Rank,
+    RemoveTopic,
+    Title,
+)
+from teleboss.domain.allies.prevote import AlliesList
+from teleboss.domain.content.prevote import CustomPoll, Rules
+from teleboss.domain.moderation.prevote import (
+    Ban,
+    Invite,
+    Kick,
+    MessageRemover,
+    MessageSilentRemover,
+    Mute,
+    Unban,
+)
+from teleboss.domain.settings.prevote import (
+    Marmalade,
+    PrivateMode,
+    Rating,
+    Shield,
+    Thresholds,
+    Timer,
+    Votes,
+    Whitelist,
+)
+from teleboss.shared.access import bot_name_checker, command_forbidden, write_init_chat
+from teleboss.shared.bootstrap import get_last_commit_info
+from teleboss.shared.calc import calc_engine
+from teleboss.shared.command import Command
+from teleboss.shared.parsers import (
+    extract_arg,
+    formatted_timer,
+    html_fix,
+    reply_msg_target,
+    time_parser,
+    topic_reply_fix,
+    username_parser,
+)
+from teleboss.shared.runtime import bot, data, helper, sqlWorker
+from teleboss.voting.engine import poll_engine
 
 
 class BuildInCommands:
@@ -65,135 +106,135 @@ class BuildInCommands:
 
     @staticmethod
     def add_usr(message):
-        prevote.Invite(message)
+        Invite(message)
 
 
     @staticmethod
     def ban_usr(message):
-        prevote.Ban(message)
+        Ban(message)
 
 
     @staticmethod
     def kick_usr(message):
-        prevote.Kick(message)
+        Kick(message)
 
 
     @staticmethod
     def mute_usr(message):
-        prevote.Mute(message)
+        Mute(message)
 
 
     @staticmethod
     def unban_usr(message):
-        prevote.Unban(message)
+        Unban(message)
 
 
     @staticmethod
     def thresholds(message):
-        prevote.Thresholds(message)
+        Thresholds(message)
 
 
     @staticmethod
     def timer(message):
-        prevote.Timer(message)
+        Timer(message)
 
 
     @staticmethod
     def rate(message):
-        prevote.Rating(message)
+        Rating(message)
 
 
     @staticmethod
     def whitelist(message):
-        prevote.Whitelist(message)
+        Whitelist(message)
 
 
     @staticmethod
     def delete_msg(message):
-        prevote.MessageRemover(message)
+        MessageRemover(message)
 
 
     @staticmethod
     def clear_msg(message):
-        prevote.MessageSilentRemover(message)
+        MessageSilentRemover(message)
 
 
     @staticmethod
     def private_mode(message):
-        prevote.PrivateMode(message)
+        PrivateMode(message)
 
 
     @staticmethod
     def op(message):
-        prevote.OpSetup(message)
+        OpSetup(message)
 
 
     @staticmethod
     def rem_topic(message):
-        prevote.RemoveTopic(message)
+        RemoveTopic(message)
 
 
     @staticmethod
     def rank(message):
-        prevote.Rank(message)
+        Rank(message)
 
 
     @staticmethod
     def deop(message):
-        prevote.Deop(message)
+        Deop(message)
 
 
     @staticmethod
     def title(message):
-        prevote.Title(message)
+        Title(message)
 
 
     @staticmethod
     def description(message):
-        prevote.Description(message)
+        Description(message)
 
 
     @staticmethod
     def chat_pic(message):
-        prevote.Avatar(message)
+        Avatar(message)
 
 
     @staticmethod
     def allies_list(message):
-        prevote.AlliesList(message)
+        AlliesList(message)
 
 
     @staticmethod
     def shield(message):
-        prevote.Shield(message)
+        Shield(message)
 
 
     @staticmethod
     def rules_msg(message):
-        prevote.Rules(message)
+        Rules(message)
 
 
     @staticmethod
     def custom_poll(message):
-        prevote.CustomPoll(message)
+        CustomPoll(message)
 
 
     @staticmethod
     def votes(message):
-        prevote.Votes(message)
+        Votes(message)
 
 
     @staticmethod
     def marmalade(message):
-        prevote.Marmalade(message)
+        Marmalade(message)
 
 
     @staticmethod
     def add_answer(message):
-        if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+        if not bot_name_checker(message) or command_forbidden(message):
             return
 
-        if utils.topic_reply_fix(message.reply_to_message) is None:
+        if topic_reply_fix(message.reply_to_message) is None:
             bot.reply_to(message, "Пожалуйста, используйте эту команду как ответ на заявку на вступление")
             return
 
@@ -224,7 +265,7 @@ class BuildInCommands:
 
     @staticmethod
     def mail(message):
-        if not utils.bot_name_checker(message):
+        if not bot_name_checker(message):
             return
 
         if message.from_user.id == data.ANONYMOUS_ID:
@@ -235,7 +276,7 @@ class BuildInCommands:
             bot.reply_to(message, "Вы не можете подписаться на рассылку, если не состоите в чате.")
             return
 
-        if utils.extract_arg(message.text, 1) == "status":
+        if extract_arg(message.text, 1) == "status":
             subscribed = " " if sqlWorker.mailing(message.from_user.id) else " не "
             bot.reply_to(message, f"Вы{subscribed}подписаны на рассылку и{subscribed}получаете информацию о новых "
                                   f"голосованиях в чате.\n<b>Обратите внимание, что если боту будет запрещено писать "
@@ -255,11 +296,11 @@ class BuildInCommands:
 
     @staticmethod
     def status(message):
-        if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+        if not bot_name_checker(message) or command_forbidden(message):
             return
 
         target_msg = message
-        if utils.topic_reply_fix(message.reply_to_message) is not None:
+        if topic_reply_fix(message.reply_to_message) is not None:
             target_msg = message.reply_to_message
 
         statuses = {"left": "покинул группу",
@@ -269,7 +310,7 @@ class BuildInCommands:
                     "administrator": "администратор",
                     "member": "участник"}
 
-        user_id, username, is_bot = utils.reply_msg_target(target_msg)
+        user_id, username, is_bot = reply_msg_target(target_msg)
         user_status = bot.get_chat_member(data.main_chat_id, user_id).status
 
         if user_id == data.ANONYMOUS_ID:
@@ -295,14 +336,14 @@ class BuildInCommands:
                 until_date = "\nОсталось до снятия ограничений: ограничен бессрочно"
             else:
                 until_date = "\nОсталось до снятия ограничений: " + \
-                             str(utils.formatted_timer(bot.get_chat_member(data.main_chat_id, user_id)
+                             str(formatted_timer(bot.get_chat_member(data.main_chat_id, user_id)
                                                        .until_date - int(time.time())))
 
         abuse_text = ""
         abuse_chk = sum(sqlWorker.abuse_check(user_id))
         if abuse_chk > 0:
             abuse_text = ("\nТаймаут абуза инвайта для пользователя: "
-                          f"{utils.formatted_timer(abuse_chk - int(time.time()))}")
+                          f"{formatted_timer(abuse_chk - int(time.time()))}")
 
         restricted_status = ''
         if user_status == 'restricted':
@@ -311,7 +352,7 @@ class BuildInCommands:
             else:
                 restricted_status = ', не находится в чате'
 
-        bot.reply_to(message, f"<b>Пользователь {utils.html_fix(username)}:</b>\n"
+        bot.reply_to(message, f"<b>Пользователь {html_fix(username)}:</b>\n"
                               f"Статус: {statuses.get(user_status)}{restricted_status}\n"
                               f"ID пользователя: <code>{user_id}</code>"
                               f"{until_date}{abuse_text}{not_bot_info}", parse_mode='html')
@@ -319,7 +360,7 @@ class BuildInCommands:
 
     @staticmethod
     def random_msg(message):
-        if not utils.bot_name_checker(message):
+        if not bot_name_checker(message):
             return
 
         try:
@@ -353,19 +394,19 @@ class BuildInCommands:
 
     @staticmethod
     def pardon(message):
-        if not utils.bot_name_checker(message):
+        if not bot_name_checker(message):
             return
 
         if message.chat.id == data.main_chat_id:
             if bot.get_chat_member(data.main_chat_id, message.from_user.id).status not in ("administrator", "creator"):
                 bot.reply_to(message, "Данная команда не может быть запущена в основном чате не администраторами.")
-            elif utils.topic_reply_fix(message.reply_to_message) is None:
+            elif topic_reply_fix(message.reply_to_message) is None:
                 bot.reply_to(message, "Требуется реплейнуть сообщение участника, "
                                       "которому вы хотите сбросить абуз инвайта.")
             elif message.reply_to_message.from_user.id == data.bot_id:
                 bot.reply_to(message, data.EASTER_LINK, disable_web_page_preview=True)
             else:
-                user_id, username, _ = utils.reply_msg_target(message.reply_to_message)
+                user_id, username, _ = reply_msg_target(message.reply_to_message)
                 sqlWorker.abuse_remove(user_id)
                 bot.reply_to(message, f"Абуз инвайта для {username} сброшен!")
                 return
@@ -381,30 +422,30 @@ class BuildInCommands:
 
     @staticmethod
     def get_id(message):
-        if utils.extract_arg(message.text, 1) == "print" and data.debug:
+        if extract_arg(message.text, 1) == "print" and data.debug:
             bot.reply_to(message, f"ID чата {message.chat.id}.\nID темы {message.message_thread_id}")
             return
 
-        if not utils.bot_name_checker(message, get_chat=True):
+        if not bot_name_checker(message, get_chat=True):
             return
 
         if message.chat.id == message.from_user.id:
             bot.reply_to(message, "Данная команда не может быть запущена в личных сообщениях.")
             return
 
-        utils.write_init_chat(message)
+        write_init_chat(message)
 
 
     @staticmethod
     def help_msg(message):
-        if not utils.bot_name_checker(message):
+        if not bot_name_checker(message):
             return
 
         if message.from_user.id == message.chat.id:
             if bot.get_chat_member(data.main_chat_id, message.from_user.id).status in ("left", "kicked"):
                 bot.reply_to(message, "У вас нет прав для использования этой команды.")
                 return
-        elif utils.command_forbidden(message):
+        elif command_forbidden(message):
             return
 
         extended_help = ("\n<b>Форматирование времени (не зависит от регистра):</b>\n"
@@ -418,7 +459,7 @@ class BuildInCommands:
                         "голосования (подробнее см. /votes help)</b>")
 
         try:
-            help_main_text, help_main_keyboard = utils.helper.get_main_list()
+            help_main_text, help_main_keyboard = helper.get_main_list()
             bot.reply_to(message, help_main_text + extended_help, reply_markup=help_main_keyboard, parse_mode='html')
         except Exception as e:
             logging.error(f"{e}\n{traceback.format_exc()}")
@@ -428,14 +469,14 @@ class BuildInCommands:
 
     @staticmethod
     def mute_user(message):
-        if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+        if not bot_name_checker(message) or command_forbidden(message):
             return
 
         if data.kill_mode == 0:
             bot.reply_to(message, "Команда /kill отключена в файле конфигурации бота.")
             return
 
-        if utils.topic_reply_fix(message.reply_to_message) is None:
+        if topic_reply_fix(message.reply_to_message) is None:
 
             if data.kill_mode == 2:
                 only_for_admins = "\nВ текущем режиме команду могут применять только администраторы чата."
@@ -471,8 +512,8 @@ class BuildInCommands:
             return
 
         timer_mute = 3600
-        if utils.extract_arg(message.text, 1) is not None:
-            timer_mute = utils.time_parser(utils.extract_arg(message.text, 1))
+        if extract_arg(message.text, 1) is not None:
+            timer_mute = time_parser(extract_arg(message.text, 1))
             if timer_mute is None:
                 bot.reply_to(message, "Неправильный аргумент, укажите время мута от 31 секунды до 12 часов.")
                 return
@@ -498,12 +539,12 @@ class BuildInCommands:
             if message.from_user.id == message.reply_to_message.from_user.id:
                 if data.rate:
                     sqlWorker.update_rate(message.from_user.id, -3)
-                    bot.reply_to(message, f"Пользователь {utils.username_parser(message)}"
-                                 + f" решил отдохнуть от чата на {utils.formatted_timer(timer_mute)}"
+                    bot.reply_to(message, f"Пользователь {username_parser(message)}"
+                                 + f" решил отдохнуть от чата на {formatted_timer(timer_mute)}"
                                  + " и снизить себе рейтинг на 3 пункта.")
                 else:
-                    bot.reply_to(message, f"Пользователь {utils.username_parser(message)}"
-                                 + f" решил отдохнуть от чата на {utils.formatted_timer(timer_mute)}")
+                    bot.reply_to(message, f"Пользователь {username_parser(message)}"
+                                 + f" решил отдохнуть от чата на {formatted_timer(timer_mute)}")
                 return
             if not bot.get_chat_member(data.main_chat_id, message.reply_to_message.from_user.id).user.is_bot \
                     and data.rate:
@@ -523,7 +564,7 @@ class BuildInCommands:
         except telebot.apihelper.ApiTelegramException as e:
             logging.error(f'Error restricting initiator user with /kill command!\n{e}')
             bot.reply_to(message, "Я смог снять права данного пользователя на "
-                         + utils.formatted_timer(timer_mute) + ", но не смог снять права автора заявки.")
+                         + formatted_timer(timer_mute) + ", но не смог снять права автора заявки.")
             return
 
         user_rate = ""
@@ -531,20 +572,20 @@ class BuildInCommands:
                 and data.rate:
             user_rate = "\nРейтинг обоих пользователей снижен на 5 пунктов."
 
-        bot.reply_to(message, f"<b>Обоюдоострый Меч сработал</b>.\nТеперь {utils.username_parser(message, True)} "
-                              f"и {utils.username_parser(message.reply_to_message, True)} "
-                              f"будут дружно молчать в течении " + utils.formatted_timer(timer_mute) + user_rate,
+        bot.reply_to(message, f"<b>Обоюдоострый Меч сработал</b>.\nТеперь {username_parser(message, True)} "
+                              f"и {username_parser(message.reply_to_message, True)} "
+                              f"будут дружно молчать в течении " + formatted_timer(timer_mute) + user_rate,
                      parse_mode="html")
 
 
     @staticmethod
     def revoke(message):
-        if not utils.bot_name_checker(message):
+        if not bot_name_checker(message):
             return
 
         is_allies = False if sqlWorker.get_ally(message.chat.id) is None else True
         if not is_allies:
-            if utils.command_forbidden(message, text="Данную команду можно запустить только "
+            if command_forbidden(message, text="Данную команду можно запустить только "
                                                      "в основном чате или в союзных чатах."):
                 return
 
@@ -558,14 +599,14 @@ class BuildInCommands:
 
     @staticmethod
     def cremate(message):
-        if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+        if not bot_name_checker(message) or command_forbidden(message):
             return
 
-        if utils.topic_reply_fix(message.reply_to_message):
+        if topic_reply_fix(message.reply_to_message):
             user_id = message.reply_to_message.from_user.id
-        elif utils.extract_arg(message.text, 1) is not None:
+        elif extract_arg(message.text, 1) is not None:
             try:
-                user_id = int(utils.extract_arg(message.text, 1))
+                user_id = int(extract_arg(message.text, 1))
             except ValueError:
                 bot.reply_to(message, "Указан неверный User ID.")
                 return
@@ -602,17 +643,17 @@ class BuildInCommands:
 
     @staticmethod
     def calc(message):
-        if not utils.bot_name_checker(message):
+        if not bot_name_checker(message):
             return
 
         is_allies = False if sqlWorker.get_ally(message.chat.id) is None else True
         user_status = bot.get_chat_member(data.main_chat_id, message.from_user.id).status
         if not (is_allies or user_status in ("creator", "administrator", "member")):
-            if utils.command_forbidden(message, text="Данную команду можно запустить только в основном чате, "
+            if command_forbidden(message, text="Данную команду можно запустить только в основном чате, "
                                                      "участникам основного чата или в союзных чатах."):
                 return
 
-        if utils.extract_arg(message.text, 1) is None:
+        if extract_arg(message.text, 1) is None:
             bot.reply_to(message, "Данная команда не может быть запущена без аргумента.")
             return
 
@@ -625,7 +666,7 @@ class BuildInCommands:
             return
 
         to_send = multiprocessing.Queue()
-        process = multiprocessing.Process(target=utils.calc_engine, args=(calc_text, to_send))
+        process = multiprocessing.Process(target=calc_engine, args=(calc_text, to_send))
         process.start()
         process.join(timeout=5)
         if process.is_alive():
@@ -689,7 +730,7 @@ class BuildInCommands:
 
     @staticmethod
     def overview(message):
-        if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+        if not bot_name_checker(message) or command_forbidden(message):
             return
 
         get_chat = bot.get_chat(data.main_chat_id)
@@ -699,7 +740,7 @@ class BuildInCommands:
             thread_id = message.message_thread_id if message.message_thread_id else 1
             thread_text = f"\n<b>ID топика:</b> <code>{thread_id}</code>"
         chat_description = (f"\n<b>Описание чата:</b>\n<blockquote expandable>"
-                            f"{utils.html_fix(get_chat.description)}</blockquote>") if get_chat.description else ""
+                            f"{html_fix(get_chat.description)}</blockquote>") if get_chat.description else ""
 
         abuse_random_time = sqlWorker.abuse_random(data.main_chat_id)
         if abuse_random_time == -1:
@@ -707,7 +748,7 @@ class BuildInCommands:
         elif abuse_random_time == 0:
             timer_random_text = "Кулдаун команды /random отключён"
         else:
-            timer_random_text = f"{utils.formatted_timer(abuse_random_time)} - кулдаун команды /random."
+            timer_random_text = f"{formatted_timer(abuse_random_time)} - кулдаун команды /random."
 
         auto_thresholds_mode = "" if not data.is_thresholds_auto() else " (авто)"
         auto_thresholds_ban_mode = "" if not data.is_thresholds_auto(True) else " (авто)"
@@ -722,7 +763,7 @@ class BuildInCommands:
 
         shield_timer = sqlWorker.params("shield", default_return=0)
         if shield_timer > int(time.time()):
-            shield_info = f"включена, до отключения осталось {utils.formatted_timer(shield_timer - int(time.time()))}"
+            shield_info = f"включена, до отключения осталось {formatted_timer(shield_timer - int(time.time()))}"
         else:
             shield_info = "отключена"
 
@@ -737,7 +778,7 @@ class BuildInCommands:
 
         reply_text = (
             f"<b>Версия Teleboss {data.VERSION} {data.CODENAME}, дата сборки: {data.BUILD_DATE}\n{plugin_list}\n\n</b>"
-            f"<b>Название чата:</b> {utils.html_fix(get_chat.title)}\n"
+            f"<b>Название чата:</b> {html_fix(get_chat.title)}\n"
             f"<b>ID чата:</b> <code>{data.main_chat_id}</code>{thread_text}{chat_description}\n"
             f"<b>Количество участников</b>: {bot.get_chat_member_count(data.main_chat_id)}\n"
             f"<b>Количество союзных чатов</b>: {len(sqlWorker.get_allies())}\n"
@@ -752,8 +793,8 @@ class BuildInCommands:
             f"Состояние защиты Marmalade: {marmalade_text}\n"
             f"<code>&gt; чтобы узнать подробнее, см. /marmalade</code>\n\n"
             f"<b>Таймеры голосований</b>\n"
-            f"Длительность обычных голосований: {utils.formatted_timer(data.global_timer)}\n"
-            f"Длительность бан-голосований: {utils.formatted_timer(data.global_timer_ban)}\n"
+            f"Длительность обычных голосований: {formatted_timer(data.global_timer)}\n"
+            f"Длительность бан-голосований: {formatted_timer(data.global_timer_ban)}\n"
             f"{timer_random_text}\n"
             f"<code>&gt; чтобы узнать подробнее, см. /timer help</code>\n\n"
             f"<b>Пороги количества голосов</b>\n"
@@ -772,7 +813,7 @@ class BuildInCommands:
 
     @staticmethod
     def version(message):
-        if not utils.bot_name_checker(message):
+        if not bot_name_checker(message):
             return
 
         bot.reply_to(message, f'TeleBOSS, версия {data.VERSION} "{data.CODENAME}"\nДата сборки: {data.BUILD_DATE}\n'
@@ -781,7 +822,7 @@ class BuildInCommands:
 
     @staticmethod
     def plugins(message):
-        if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+        if not bot_name_checker(message) or command_forbidden(message):
             return
 
         plugin_list = "Никакие плагины сейчас не загружены."
@@ -794,11 +835,11 @@ class BuildInCommands:
 
     @staticmethod
     def git(message):
-        if not utils.bot_name_checker(message) or utils.command_forbidden(message):
+        if not bot_name_checker(message) or command_forbidden(message):
             return
 
         try:
-            count = int(utils.extract_arg(message.text, 1))
+            count = int(extract_arg(message.text, 1))
         except ValueError:
             bot.reply_to(message, "Аргумент количества выводимых коммитов не является числом!")
             return
@@ -806,7 +847,7 @@ class BuildInCommands:
             count = 1
 
         try:
-            index = int(utils.extract_arg(message.text, 2))
+            index = int(extract_arg(message.text, 2))
         except ValueError:
             bot.reply_to(message, "Аргумент порядкового номера коммита не является числом!")
             return
@@ -822,7 +863,7 @@ class BuildInCommands:
             return
 
         try:
-            info = utils.html_fix(utils.get_last_commit_info(count_of_commits=count, commit_index=index - 1))
+            info = html_fix(get_last_commit_info(count_of_commits=count, commit_index=index - 1))
             if len(info) > 3800:
                 info = (info[:3800].rsplit(' ', 1)[0] +
                         '\n<i>чейнджлог коммитов слишком длинный для вывода в сообщении...</i>')
@@ -844,7 +885,7 @@ class BuildInCommands:
 
     @staticmethod
     def niko(message):
-        if not utils.bot_name_checker(message):
+        if not bot_name_checker(message):
             return
 
         try:

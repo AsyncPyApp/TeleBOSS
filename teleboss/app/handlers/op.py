@@ -1,11 +1,10 @@
 import json
 
-import prevote
-import utils
-from poll_engines import poll_engine
-from utils import data, bot, sqlWorker
-
 from teleboss.app.handlers.votes import call_msg_chk, close_vote
+from teleboss.domain.admin.prevote import Op, OpGlobal
+from teleboss.shared.runtime import bot, data, sqlWorker
+from teleboss.shared.vote_ui import button_anonymous_checker, make_keyboard
+from teleboss.voting.engine import poll_engine
 
 
 @bot.callback_query_handler(func=lambda call: "op!" in call.data)
@@ -27,7 +26,7 @@ def op_button(call_msg):
         return
 
     user_id = call_msg.from_user.id
-    if utils.button_anonymous_checker(call_msg.from_user.id, call_msg.message.chat.id):
+    if button_anonymous_checker(call_msg.from_user.id, call_msg.message.chat.id):
         user_id = data.ANONYMOUS_ID
 
     button_data = json.loads(poll[0][4])
@@ -53,9 +52,9 @@ def op_button(call_msg):
             poll_engine.vote_abuse.clear()
             poll_engine.vote_result(poll[0][0], call_msg.message.id)
             if poll[0][2] == 'op setup':
-                prevote.Op(call_msg.message, poll)
+                Op(call_msg.message, poll)
             else:
-                prevote.OpGlobal(call_msg.message, poll)
+                OpGlobal(call_msg.message, poll)
             return
         if not data.admin_allowed[button["button_type"].split("_", maxsplit=1)[1]] and poll[0][2] == 'op setup':
             bot.answer_callback_query(callback_query_id=call_msg.id,
@@ -70,4 +69,4 @@ def op_button(call_msg):
 
     sqlWorker.update_poll_votes(poll[0][0], json.dumps(button_data))
     bot.edit_message_reply_markup(call_msg.message.chat.id, message_id=call_msg.message.id,
-                                  reply_markup=utils.make_keyboard(button_data, False))
+                                  reply_markup=make_keyboard(button_data, False))

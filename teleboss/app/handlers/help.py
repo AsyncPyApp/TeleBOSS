@@ -1,8 +1,7 @@
 import logging
 import traceback
 
-import utils
-from utils import data, bot
+from teleboss.shared.runtime import bot, data, helper
 
 
 @bot.callback_query_handler(func=lambda call: "help!_cat" in call.data)
@@ -15,7 +14,7 @@ def help_category(call_msg):
 
     index = call_msg.data.split("_")[2]
     try:
-        help_cat_text, help_cat_keyboard = utils.helper.get_category_list(index)
+        help_cat_text, help_cat_keyboard = helper.get_category_list(index)
         bot.edit_message_text(help_cat_text, call_msg.message.chat.id, call_msg.message.message_id,
                               reply_markup=help_cat_keyboard, parse_mode='html')
     except Exception as e:
@@ -51,7 +50,7 @@ def help_main(call_msg):
                      "голосования (подробнее см. /votes help)</b>")
 
     try:
-        help_main_text, help_main_keyboard = utils.helper.get_main_list()
+        help_main_text, help_main_keyboard = helper.get_main_list()
         bot.edit_message_text(help_main_text + extended_help, call_msg.message.chat.id, call_msg.message.message_id,
                               reply_markup=help_main_keyboard, parse_mode='html')
     except Exception as e:
