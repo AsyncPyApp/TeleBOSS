@@ -2120,9 +2120,15 @@ class Shield(PreVote):
                                    "Теперь добавление новых участников временно невозможно!")
 
     def enable(self):
-        timer = utils.time_parser(utils.extract_arg(self.msg_txt, 2))
+        timer = utils.extract_arg(self.msg_txt, 2)
+        if not timer:
+            bot.reply_to(self.message, "Требуется указать третьим аргументом значение таймера защиты "
+                                       "(от 1 часа до 30 дней)")
+            return
+        timer = utils.time_parser(timer)
         if timer is None:
-            timer = 43200
+            bot.reply_to(self.message, "Не удалось распарсить аргумент таймера.")
+            return
         if not 3600 <= timer <= 2592000:
             bot.reply_to(self.message, "Значение таймера защиты может быть от 1 часа до 30 дней!")
             return

@@ -83,7 +83,7 @@ class ConfigData:
     # Do not edit this section to change the parameters of the bot!
     # TeleBOSS is customizable via config file or chat voting!
     # It is possible to access sqlWorker.params directly for parameters that are stored in the database
-    VERSION = "3.3.1"  # Current bot version
+    VERSION = "3.3.2"  # Current bot version
     CODENAME = "Deuterium Discharge"
     MIN_VERSION = "3.3"  # The minimum version from which you can upgrade to this one without breaking the bot
     BUILD_DATE = "02.08.2026"  # Bot build date
