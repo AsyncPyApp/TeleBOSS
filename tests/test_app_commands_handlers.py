@@ -10,6 +10,59 @@ from helpers import (
     HANDLER_CB_COUNT,
     HANDLER_MSG_COUNT,
     REPO_ROOT,
+    SHIM_MODS,
+    module_imports,
+)
+
+HOST_COMMAND_METHODS = frozenset(
+    {
+        "add_answer",
+        "mail",
+        "status",
+        "random_msg",
+        "pardon",
+        "get_id",
+        "help_msg",
+        "mute_user",
+        "revoke",
+        "cremate",
+        "calc",
+        "start",
+        "overview",
+        "version",
+        "plugins",
+        "git",
+        "niko",
+    }
+)
+PREVOTE_STUB_METHODS = frozenset(
+    {
+        "add_usr",
+        "ban_usr",
+        "kick_usr",
+        "mute_usr",
+        "unban_usr",
+        "thresholds",
+        "timer",
+        "rate",
+        "whitelist",
+        "delete_msg",
+        "clear_msg",
+        "private_mode",
+        "op",
+        "rem_topic",
+        "rank",
+        "deop",
+        "title",
+        "description",
+        "chat_pic",
+        "allies_list",
+        "shield",
+        "rules_msg",
+        "custom_poll",
+        "votes",
+        "marmalade",
+    }
 )
 
 
@@ -41,9 +94,10 @@ def test_thin_main_py() -> None:
         isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.decorator_list
         for n in main_tree.body
     )
-    assert not (REPO_ROOT / "teleboss/app/host_commands.py").exists()
+    assert (REPO_ROOT / "teleboss/app/host_commands.py").is_file()
     for rel in (
         "teleboss/app/commands.py",
+        "teleboss/app/host_commands.py",
         "teleboss/app/handlers/membership.py",
         "teleboss/app/handlers/captcha.py",
         "teleboss/app/handlers/votes.py",
@@ -51,6 +105,9 @@ def test_thin_main_py() -> None:
         "teleboss/app/handlers/help.py",
     ):
         assert (REPO_ROOT / rel).is_file(), rel
+
+    cmds_src = (REPO_ROOT / "teleboss/app/commands.py").read_text(encoding="utf-8")
+    assert "from teleboss.app.host_commands import HostCommands" in cmds_src
 
 
 def test_buildin_commands_keys_and_aliases(utils_mod) -> None:
@@ -66,6 +123,7 @@ def test_buildin_commands_keys_and_aliases(utils_mod) -> None:
     class_def = next(
         n for n in cmds_ast.body if isinstance(n, ast.ClassDef) and n.name == "BuildInCommands"
     )
+    assert any(isinstance(b, ast.Name) and b.id == "HostCommands" for b in class_def.bases)
     init = next(n for n in class_def.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
     keys_from_ast: list[str] = []
     for stmt in init.body:
@@ -77,6 +135,33 @@ def test_buildin_commands_keys_and_aliases(utils_mod) -> None:
                             if isinstance(k, ast.Constant):
                                 keys_from_ast.append(k.value)
     assert set(keys_from_ast) == set(cmds)
+
+
+def test_host_commands_method_homes_and_dag() -> None:
+    host_path = REPO_ROOT / "teleboss/app/host_commands.py"
+    cmds_path = REPO_ROOT / "teleboss/app/commands.py"
+    host_ast = ast.parse(host_path.read_text(encoding="utf-8"))
+    cmds_ast = ast.parse(cmds_path.read_text(encoding="utf-8"))
+
+    host_cls = next(n for n in host_ast.body if isinstance(n, ast.ClassDef) and n.name == "HostCommands")
+    host_methods = {n.name for n in host_cls.body if isinstance(n, ast.FunctionDef)}
+    assert host_methods == HOST_COMMAND_METHODS
+
+    cmds_cls = next(n for n in cmds_ast.body if isinstance(n, ast.ClassDef) and n.name == "BuildInCommands")
+    stub_methods = {
+        n.name for n in cmds_cls.body if isinstance(n, ast.FunctionDef) and n.name != "__init__"
+    }
+    assert stub_methods == PREVOTE_STUB_METHODS
+    assert host_methods.isdisjoint(stub_methods)
+
+    imports = module_imports(host_path)
+    assert not any(m == "teleboss.domain" or m.startswith("teleboss.domain.") for m in imports)
+    assert imports.isdisjoint(SHIM_MODS)
+    assert "teleboss.app.commands" not in imports
+    allowed_prefixes = ("teleboss.shared.", "teleboss.voting.")
+    for mod in imports:
+        if mod.startswith("teleboss."):
+            assert any(mod == p.rstrip(".") or mod.startswith(p) for p in allowed_prefixes), mod
 
 
 def test_handler_bot_identity_and_shared_callables(utils_mod) -> None:
