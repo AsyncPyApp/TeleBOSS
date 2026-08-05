@@ -213,3 +213,34 @@ def test_votes_mid_import_order() -> None:
     vote_pos = votes_src.find('func=lambda call: "vote!" in call.data')
     op_import_pos = votes_src.find("from teleboss.app.handlers import op")
     assert 0 <= op_import_pos < vote_pos
+
+
+def test_callback_tokens_and_op_before_vote_unchanged(teleboss_runtime) -> None:
+    """Exact callback-token probes and op! registration before vote! (T03)."""
+    import main  # noqa: F401
+
+    cb_handlers = list(getattr(teleboss_runtime.bot, "callback_query_handlers", []))
+    for i, probe in enumerate(CALLBACK_PROBE_ORDER):
+        matches = [j for j, h in enumerate(cb_handlers) if _filter_matches(h, probe)]
+        assert matches and matches[0] == i, f"probe {probe!r}: matches={matches}"
+
+    op_idx = next(i for i, h in enumerate(cb_handlers) if _filter_matches(h, "op!_x"))
+    vote_idx = next(i for i, h in enumerate(cb_handlers) if _filter_matches(h, "vote!_x"))
+    assert op_idx < vote_idx
+
+
+def test_handler_sources_forbid_legacy_poll_apis() -> None:
+    """votes/op/host must not call get_poll or update_poll_votes (AST gate)."""
+    forbidden = frozenset({"get_poll", "update_poll_votes"})
+    for rel in (
+        "teleboss/app/handlers/votes.py",
+        "teleboss/app/handlers/op.py",
+        "teleboss/app/host_commands.py",
+    ):
+        tree = ast.parse((REPO_ROOT / rel).read_text(encoding="utf-8"))
+        called: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                called.add(node.func.attr)
+        hit = called & forbidden
+        assert not hit, f"{rel} still calls {sorted(hit)}"

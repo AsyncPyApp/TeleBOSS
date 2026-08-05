@@ -92,15 +92,23 @@ class NewUserChecker(PreVote):
                 sqlWorker.marmalade_add(self.reply_user_id, int(time.time()))
 
     def is_voting_exist(self):
-        message_id = sqlWorker.get_message_id(self.unique_id)
-        if message_id:
-            poll = sqlWorker.get_poll(message_id)
+        """Return True when an active join poll for ``unique_id`` exists.
+
+        Expired open rows are removed so a new join vote may start. Lookup is
+        by ``unique_id`` only (no message-only reconstruction).
+
+        Returns:
+            True when a non-expired poll still blocks a duplicate start.
+        """
+        poll = sqlWorker.get_poll_by_unique_id(self.unique_id)
+        if poll:
             if poll[0][5] <= int(time.time()):
                 sqlWorker.rem_rec(poll[0][0])
                 return False
-            else:
-                bot.reply_to(self.message, "Голосование о добавлении участника уже существует.")
-                return True
+            bot.reply_to(
+                self.message, "Голосование о добавлении участника уже существует."
+            )
+            return True
         return False
 
     def for_bots(self):

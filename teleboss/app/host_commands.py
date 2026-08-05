@@ -32,6 +32,14 @@ class HostCommands:
 
     @staticmethod
     def add_answer(message):
+        """Reply to an invite-poll applicant using the host ``/answer`` command.
+
+        Resolves the replied poll by the command chat and replied message id
+        so same message ids in other chats cannot cross-resolve.
+
+        Args:
+            message: Host command message that replies to an invite poll.
+        """
         if not bot_name_checker(message) or command_forbidden(message):
             return
 
@@ -39,7 +47,9 @@ class HostCommands:
             bot.reply_to(message, "Пожалуйста, используйте эту команду как ответ на заявку на вступление")
             return
 
-        poll = sqlWorker.get_poll(message.reply_to_message.id)
+        poll = sqlWorker.get_open_poll(
+            message.chat.id, message.reply_to_message.id
+        )
         if poll:
             if poll[0][2] != "invite":
                 bot.reply_to(message, "Данное голосование не является голосованием о вступлении.")

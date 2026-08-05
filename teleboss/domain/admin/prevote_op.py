@@ -132,15 +132,24 @@ class OpSetup(PreVote):
         return button_scheme
 
     def is_voting_exist_op(self, unique_id):
-        message_id = sqlWorker.get_message_id(unique_id)
-        if message_id:
-            poll = sqlWorker.get_poll(message_id)
+        """Return True when an active op checklist for ``unique_id`` exists.
+
+        Expired open rows are removed so a new checklist may start. Lookup is
+        by ``unique_id`` only (no message-only reconstruction).
+
+        Args:
+            unique_id: Logical poll primary key for the op checklist.
+
+        Returns:
+            True when a non-expired poll still blocks a duplicate start.
+        """
+        poll = sqlWorker.get_poll_by_unique_id(unique_id)
+        if poll:
             if poll[0][5] <= int(time.time()):
                 sqlWorker.rem_rec(poll[0][0])
                 return False
-            else:
-                bot.reply_to(self.message, "Голосование о данном вопросе уже идёт.")
-                return True
+            bot.reply_to(self.message, "Голосование о данном вопросе уже идёт.")
+            return True
         return False
 
 class Op(PreVote):

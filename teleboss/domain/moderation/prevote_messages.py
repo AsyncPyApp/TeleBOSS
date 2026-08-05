@@ -19,6 +19,14 @@ class MessageRemover(PreVote):
         return PreVote.timer_votes_init_ban()
 
     def pre_return(self) -> Optional[bool]:
+        """Reject delete-message votes that target an open bot poll message.
+
+        Uses composite ``(chat_id, message_id)`` lookup so a same-id poll in
+        another chat cannot block deletion here.
+
+        Returns:
+            ``True`` when the command should abort; ``None`` to continue.
+        """
         if command_forbidden(self.message):
             return True
 
@@ -29,7 +37,10 @@ class MessageRemover(PreVote):
         self.reply_user_id, self.reply_username, self.reply_is_bot \
             = reply_msg_target(self.message.reply_to_message)
 
-        if data.bot_id == self.reply_user_id and sqlWorker.get_poll(self.message.reply_to_message.id):
+        reply = self.message.reply_to_message
+        if data.bot_id == self.reply_user_id and sqlWorker.get_open_poll(
+            self.message.chat.id, reply.id
+        ):
             bot.reply_to(self.message, "Вы не можете удалить голосование до его завершения!")
             return True
 
