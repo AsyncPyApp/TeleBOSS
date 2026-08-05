@@ -34,11 +34,12 @@ def test_main_handler_import_order() -> None:
     assert import_names == ["membership", "captcha", "votes", "help"]
 
 
-def test_main_still_imports_shims() -> None:
-    main_src = (REPO_ROOT / "main.py").read_text(encoding="utf-8")
-    assert "import utils" in main_src
-    assert "import plugin_engine" in main_src
-    assert "import postvote" in main_src
+def test_main_does_not_import_shims() -> None:
+    """After T02, main.py must not import any of the six root shim modules."""
+    from helpers import SHIM_MODS, module_imports
+
+    roots = {m.split(".")[0] for m in module_imports(REPO_ROOT / "main.py")}
+    assert roots.isdisjoint(SHIM_MODS)
 
 
 def test_membership_uses_prevote_new_user_checker() -> None:
@@ -50,6 +51,6 @@ def test_membership_uses_prevote_new_user_checker() -> None:
 
 def test_post_vote_list_init_before_plugins() -> None:
     main_src = (REPO_ROOT / "main.py").read_text(encoding="utf-8")
-    init_pos = main_src.find("postvote.post_vote_list_init()")
+    init_pos = main_src.find("post_vote_list_init()")
     plugins_pos = main_src.find("Plugins(")
     assert 0 <= init_pos < plugins_pos

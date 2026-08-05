@@ -58,9 +58,9 @@ def test_shim_canonical_notes_cover_shim_mods() -> None:
 
 
 def test_product_shim_callers_match_w0_golden() -> None:
-    """W0 pre-migrate: only main.py among product files imports root shims."""
+    """Post-T02: no product files import root shims (shim files remain until T05)."""
     assert _product_shim_caller_files() == set(PRODUCT_SHIM_CALLER_FILES)
-    assert PRODUCT_SHIM_CALLER_FILES == frozenset({"main.py"})
+    assert PRODUCT_SHIM_CALLER_FILES == frozenset()
 
 
 def test_teleboss_has_zero_root_shim_imports() -> None:

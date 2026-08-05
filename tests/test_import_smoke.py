@@ -40,7 +40,8 @@ def test_consumer_utils_symbols_on_shim(utils_mod) -> None:
     assert not runtime_miss, f"runtime missing on shim: {runtime_miss}"
 
 
-def test_callers_import_poll_engines_shim() -> None:
+def test_poll_engines_shim_present_without_product_callers() -> None:
+    """After main migrate, listed product files do not import poll_engines; shim stays until T05."""
     caller_from_shim: list[str] = []
     for fname in ("prevote.py", "postvote.py", "plugin_engine.py", "main.py"):
         tree = ast.parse((REPO_ROOT / fname).read_text(encoding="utf-8"))
@@ -48,7 +49,12 @@ def test_callers_import_poll_engines_shim() -> None:
             if isinstance(node, ast.ImportFrom) and node.module:
                 if node.module == "poll_engines" or node.module.startswith("poll_engines."):
                     caller_from_shim.append(fname)
-    assert caller_from_shim, "expected at least one caller to import poll_engines shim"
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name == "poll_engines" or alias.name.startswith("poll_engines."):
+                        caller_from_shim.append(fname)
+    assert not caller_from_shim, f"unexpected poll_engines callers: {caller_from_shim}"
+    assert (REPO_ROOT / "poll_engines.py").is_file()
 
 
 def test_postvote_shim_no_utils_or_poll_engines() -> None:

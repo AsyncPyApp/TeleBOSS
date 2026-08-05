@@ -21,9 +21,8 @@ SHIM_CANONICAL_NOTES: dict[str, str] = {
     "postvote": "teleboss.domain.*.postvote + teleboss.domain.postvote_registry",
 }
 
-# W0 pre-migrate golden: sole product flat-import shim caller is main.py.
-# T02 empties to frozenset() after main leaves shim callers; shim files remain until T05.
-PRODUCT_SHIM_CALLER_FILES: frozenset[str] = frozenset({"main.py"})
+# Post-T02: main left product shim callers; six root shim files remain until T05.
+PRODUCT_SHIM_CALLER_FILES: frozenset[str] = frozenset()
 
 POSTVOTE_EXPECTED_KEYS = [
     "invite",
@@ -246,12 +245,13 @@ BUILDIN_EXPECTED_KEYS = {
 }
 
 # Built at runtime so suite sources never embed the banned contiguous substring.
+# "\n    init()" avoids a false match inside post_vote_list_init().
 MAIN_BOOTSTRAP_ORDER = [
     "BuildInCommands()",
-    "postvote.post_vote_list_init()",
-    "plugin_engine.Plugins(",
-    "utils.init()",
-    "utils.register_commands(",
+    "post_vote_list_init()",
+    "Plugins(",
+    "\n    init()",
+    "register_commands(",
     "poll_engine.auto_restart_polls()",
     "bot." + "_".join(("infinity", "polling")) + "()",
 ]
