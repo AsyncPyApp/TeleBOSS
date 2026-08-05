@@ -1,6 +1,6 @@
 # TeleBOSS
 
-[![Version](https://img.shields.io/badge/version-3.3.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.0.0-blue)](CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-beta%20%7C%20в%20разработке-orange)](#)
 [![Codename](https://img.shields.io/badge/codename-Deuterium%20Discharge-8A2BE2)](teleboss/shared/config.py)
 [![Python](https://img.shields.io/badge/python-3.14.6%2B-yellow?logo=python&logoColor=white)](#запуск)
