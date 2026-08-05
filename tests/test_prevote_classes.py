@@ -50,7 +50,7 @@ def test_expected_map_and_inheritance_colocated() -> None:
 
 def test_domain_prevote_files_exist() -> None:
     for domain in ("moderation", "settings", "admin", "allies", "content"):
-        path = REPO_ROOT / "teleboss" / "domain" / domain / "prevote.py"
+        path = REPO_ROOT / "src" / "domain" / domain / "prevote.py"
         assert path.is_file(), domain
 
 
@@ -58,17 +58,17 @@ def test_prevote_sibling_split_binding() -> None:
     for domain, expected in PREVOTE_SIBLING_FILES.items():
         actual = {
             p.name
-            for p in (REPO_ROOT / "teleboss" / "domain" / domain).glob("prevote_*.py")
+            for p in (REPO_ROOT / "src" / "domain" / domain).glob("prevote_*.py")
         }
         assert actual == expected, domain
     for domain in ("allies", "content"):
-        siblings = list((REPO_ROOT / "teleboss" / "domain" / domain).glob("prevote_*.py"))
+        siblings = list((REPO_ROOT / "src" / "domain" / domain).glob("prevote_*.py"))
         assert not siblings, domain
 
 
 def test_prevote_barrels_are_thin_reexports() -> None:
     for domain in ("settings", "moderation", "admin"):
-        path = REPO_ROOT / "teleboss" / "domain" / domain / "prevote.py"
+        path = REPO_ROOT / "src" / "domain" / domain / "prevote.py"
         tree = ast.parse(path.read_text(encoding="utf-8"))
         class_defs = [n.name for n in tree.body if isinstance(n, ast.ClassDef)]
         assert not class_defs, f"{domain} barrel still defines {class_defs}"

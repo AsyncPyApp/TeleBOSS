@@ -27,18 +27,18 @@ def _lock_callback_handler_order(teleboss_runtime) -> None:
 
 # Migrated product callers (T03). Compatibility wrappers live only in sql_worker.
 _MIGRATED_CALLERS: tuple[str, ...] = (
-    "teleboss/app/handlers/votes.py",
-    "teleboss/app/handlers/op.py",
-    "teleboss/app/host_commands/membership.py",
-    "teleboss/app/host_commands/info.py",
-    "teleboss/app/host_commands/moderation.py",
-    "teleboss/app/host_commands/misc.py",
-    "teleboss/app/host_commands/__init__.py",
-    "teleboss/voting/bases.py",
-    "teleboss/voting/engine.py",
-    "teleboss/domain/moderation/prevote_join.py",
-    "teleboss/domain/admin/prevote_op.py",
-    "teleboss/domain/moderation/prevote_messages.py",
+    "src/app/handlers/votes.py",
+    "src/app/handlers/op.py",
+    "src/app/host_commands/membership.py",
+    "src/app/host_commands/info.py",
+    "src/app/host_commands/moderation.py",
+    "src/app/host_commands/misc.py",
+    "src/app/host_commands/__init__.py",
+    "src/voting/bases.py",
+    "src/voting/engine.py",
+    "src/domain/moderation/prevote_join.py",
+    "src/domain/admin/prevote_op.py",
+    "src/domain/moderation/prevote_messages.py",
 )
 
 _LEGACY_FORBIDDEN = frozenset({"get_poll", "update_poll_votes"})
@@ -239,10 +239,10 @@ def test_migrated_callers_forbid_legacy_get_poll_and_update_poll_votes() -> None
 def _sql_worker_public_method_names() -> set[str]:
     """Collect SqlWorker callable names across facade + mixin MRO (AST).
 
-    ``SqlWorker`` is composed from mixins under ``teleboss/shared/storage/``;
+    ``SqlWorker`` is composed from mixins under ``src/shared/storage/``;
     method bodies no longer all live in the facade module.
     """
-    storage_dir = REPO_ROOT / "teleboss/shared/storage"
+    storage_dir = REPO_ROOT / "src/shared/storage"
     class_methods: dict[str, set[str]] = {}
     for path in storage_dir.glob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -253,7 +253,7 @@ def _sql_worker_public_method_names() -> set[str]:
                     for n in node.body
                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
                 }
-    facade = REPO_ROOT / "teleboss/shared/storage/sql_worker.py"
+    facade = REPO_ROOT / "src/shared/storage/sql_worker.py"
     tree = ast.parse(facade.read_text(encoding="utf-8"))
     sql_worker_bases: list[str] = []
     for node in tree.body:
@@ -311,16 +311,16 @@ def test_migrated_callers_may_use_rem_rec_for_cleanup() -> None:
         if _attr_call_names(tree) & _ALLOWED_LEGACY_CLEANUP:
             found.add(rel)
     # At least cancel + duplicate paths keep rem_rec (task permits).
-    assert "teleboss/app/handlers/votes.py" in found
-    assert "teleboss/voting/bases.py" in found
+    assert "src/app/handlers/votes.py" in found
+    assert "src/voting/bases.py" in found
 
 
 def test_displayed_poll_lookups_use_get_open_poll_with_two_args() -> None:
     """Callback /answer / delete-guard paths must pass chat_id + message_id."""
     targets = {
-        "teleboss/app/handlers/votes.py": "call_msg_chk",
-        "teleboss/app/host_commands/membership.py": "add_answer",
-        "teleboss/domain/moderation/prevote_messages.py": "pre_return",
+        "src/app/handlers/votes.py": "call_msg_chk",
+        "src/app/host_commands/membership.py": "add_answer",
+        "src/domain/moderation/prevote_messages.py": "pre_return",
     }
     for rel, func_name in targets.items():
         path = REPO_ROOT / rel
@@ -346,10 +346,10 @@ def test_displayed_poll_lookups_use_get_open_poll_with_two_args() -> None:
 def test_duplicate_and_timer_paths_use_unique_id_lookup() -> None:
     """Duplicate checks and engine completion resolve by unique_id, not message-only."""
     for rel, func_name in (
-        ("teleboss/voting/bases.py", "is_voting_exist"),
-        ("teleboss/domain/moderation/prevote_join.py", "is_voting_exist"),
-        ("teleboss/domain/admin/prevote_op.py", "is_voting_exist_op"),
-        ("teleboss/voting/engine.py", "vote_result"),
+        ("src/voting/bases.py", "is_voting_exist"),
+        ("src/domain/moderation/prevote_join.py", "is_voting_exist"),
+        ("src/domain/admin/prevote_op.py", "is_voting_exist_op"),
+        ("src/voting/engine.py", "vote_result"),
     ):
         path = REPO_ROOT / rel
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -365,7 +365,7 @@ def test_duplicate_and_timer_paths_use_unique_id_lookup() -> None:
 
 def test_engine_timer_and_restart_pass_unique_id_to_vote_result() -> None:
     """vote_timer / auto_restart_polls must call vote_result(unique_id, ...)."""
-    path = REPO_ROOT / "teleboss/voting/engine.py"
+    path = REPO_ROOT / "src/voting/engine.py"
     src = path.read_text(encoding="utf-8")
     tree = ast.parse(src)
     for func_name in ("vote_timer", "auto_restart_polls"):

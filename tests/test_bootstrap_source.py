@@ -14,7 +14,7 @@ from helpers import (
 
 
 def test_bootstrap_py_needles() -> None:
-    boot = (REPO_ROOT / "teleboss/shared/bootstrap.py").read_text(encoding="utf-8")
+    boot = (REPO_ROOT / "src/shared/bootstrap.py").read_text(encoding="utf-8")
     assert "def preflight_compatibility()" in boot
     assert "data.MIN_VERSION" in boot
     assert "sys.exit(1)" in boot
@@ -59,7 +59,7 @@ def test_main_does_not_import_shims() -> None:
 
 def test_membership_uses_prevote_new_user_checker() -> None:
     """Join-path still goes through prevote.NewUserChecker (may live in handler, not thin main)."""
-    membership = (REPO_ROOT / "teleboss/app/handlers/membership.py").read_text(encoding="utf-8")
+    membership = (REPO_ROOT / "src/app/handlers/membership.py").read_text(encoding="utf-8")
     assert "NewUserChecker" in membership
     assert "prevote" in membership or "teleboss.domain" in membership
 

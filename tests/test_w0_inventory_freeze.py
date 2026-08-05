@@ -62,7 +62,7 @@ def test_product_shim_callers_match_w0_golden() -> None:
 
 def test_teleboss_has_zero_root_shim_imports() -> None:
     offenders: list[str] = []
-    for path in (REPO_ROOT / "teleboss").rglob("*.py"):
+    for path in (REPO_ROOT / "src").rglob("*.py"):
         text = path.read_text(encoding="utf-8")
         for m in SHIM_IMPORT_RE.finditer(text):
             line = text[: m.start()].count("\n") + 1

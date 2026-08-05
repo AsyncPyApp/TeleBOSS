@@ -338,7 +338,7 @@ def module_imports(path: Path) -> set[str]:
 
 
 def extract_postvote_registry_keys() -> list[str]:
-    src = (REPO_ROOT / "teleboss/domain/postvote_registry.py").read_text(encoding="utf-8")
+    src = (REPO_ROOT / "src/domain/postvote_registry.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     for node in tree.body:
         if isinstance(node, ast.FunctionDef) and node.name == "post_vote_list_init":

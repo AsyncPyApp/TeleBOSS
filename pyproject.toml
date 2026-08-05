@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teleboss"
+version = "4.0.1"
+requires-python = ">=3.14.6"
+dependencies = [
+  "pytelegrambotapi>=4.36.0",
+  "packaging>=26.2",
+]
+
+[tool.setuptools]
+packages = [
+  "teleboss",
+  "teleboss.app",
+  "teleboss.app.handlers",
+  "teleboss.app.host_commands",
+  "teleboss.domain",
+  "teleboss.domain.admin",
+  "teleboss.domain.allies",
+  "teleboss.domain.content",
+  "teleboss.domain.moderation",
+  "teleboss.domain.settings",
+  "teleboss.plugin_loader",
+  "teleboss.shared",
+  "teleboss.shared.storage",
+  "teleboss.voting",
+]
+
+[tool.setuptools.package-dir]
+"teleboss.app" = "src/app"
+"teleboss.domain" = "src/domain"
+"teleboss.shared" = "src/shared"
+"teleboss.voting" = "src/voting"
+"teleboss.plugin_loader" = "src/plugin_loader"

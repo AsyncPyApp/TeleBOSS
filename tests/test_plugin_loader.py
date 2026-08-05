@@ -8,11 +8,11 @@ from helpers import REPO_ROOT
 
 
 def test_loader_file_location() -> None:
-    assert (REPO_ROOT / "teleboss/plugin_loader/loader.py").is_file()
+    assert (REPO_ROOT / "src/plugin_loader/loader.py").is_file()
 
 
 def test_discovery_and_fail_closed_source_strings() -> None:
-    loader_src = (REPO_ROOT / "teleboss/plugin_loader/loader.py").read_text(encoding="utf-8")
+    loader_src = (REPO_ROOT / "src/plugin_loader/loader.py").read_text(encoding="utf-8")
     assert 'plugin_folder = "plugins"' in loader_src
     assert "plugin_folder = data.path[:-1] + '_plugins'" in loader_src
     assert "f'{plugin_folder}.{plugin_name}'" in loader_src

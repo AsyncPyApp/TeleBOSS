@@ -1,4 +1,4 @@
-"""Layer DAG, empty package inits, no root-shim imports under teleboss/."""
+"""Layer DAG, empty package inits, no root-shim imports under product ``src/``."""
 
 from __future__ import annotations
 
@@ -12,10 +12,12 @@ SHIM_IMPORT_RE = re.compile(
     re.MULTILINE,
 )
 
+_SRC = REPO_ROOT / "src"
+
 
 def test_no_root_shim_imports_under_teleboss() -> None:
     offenders: list[str] = []
-    for path in (REPO_ROOT / "teleboss").rglob("*.py"):
+    for path in _SRC.rglob("*.py"):
         text = path.read_text(encoding="utf-8")
         for m in SHIM_IMPORT_RE.finditer(text):
             line = text[: m.start()].count("\n") + 1
@@ -26,9 +28,9 @@ def test_no_root_shim_imports_under_teleboss() -> None:
 def test_empty_package_inits() -> None:
     for rel in (
         "teleboss/__init__.py",
-        "teleboss/shared/__init__.py",
-        "teleboss/voting/__init__.py",
-        "teleboss/plugin_loader/__init__.py",
+        "src/shared/__init__.py",
+        "src/voting/__init__.py",
+        "src/plugin_loader/__init__.py",
     ):
         text = (REPO_ROOT / rel).read_text(encoding="utf-8").strip()
         assert text == "", f"{rel} not empty: {text!r}"
@@ -41,7 +43,7 @@ def test_shared_does_not_import_upper_layers() -> None:
         re.M,
     )
     bad: list[str] = []
-    for path in (REPO_ROOT / "teleboss/shared").rglob("*.py"):
+    for path in (_SRC / "shared").rglob("*.py"):
         if layer_re.search(path.read_text(encoding="utf-8")):
             bad.append(str(path.relative_to(REPO_ROOT)))
     assert not bad, bad
@@ -55,7 +57,7 @@ def test_voting_layer_rules() -> None:
     )
     bad_layers: list[str] = []
     utils_imports: list[str] = []
-    for path in (REPO_ROOT / "teleboss/voting").rglob("*.py"):
+    for path in (_SRC / "voting").rglob("*.py"):
         text = path.read_text(encoding="utf-8")
         if layer_re.search(text):
             bad_layers.append(str(path.relative_to(REPO_ROOT)))
@@ -71,7 +73,7 @@ def test_voting_layer_rules() -> None:
 
 
 def test_plugin_loader_layer_shared_and_voting_only() -> None:
-    loader_src = (REPO_ROOT / "teleboss/plugin_loader/loader.py").read_text(encoding="utf-8")
+    loader_src = (_SRC / "plugin_loader/loader.py").read_text(encoding="utf-8")
     tree = ast.parse(loader_src)
     forbidden_prefixes = (
         "teleboss.domain",
@@ -105,7 +107,7 @@ def test_no_domain_cross_imports_postvote() -> None:
     sibling_domains = {"moderation", "settings", "admin", "allies", "content"}
     cross: list[tuple[str, str]] = []
     for domain in sibling_domains:
-        path = REPO_ROOT / "teleboss" / "domain" / domain / "postvote.py"
+        path = _SRC / "domain" / domain / "postvote.py"
         for mod in module_imports(path):
             if not mod.startswith("teleboss.domain."):
                 continue
@@ -118,7 +120,7 @@ def test_no_domain_cross_imports_postvote() -> None:
 def test_no_domain_cross_imports_prevote() -> None:
     sibling_domains = {"moderation", "settings", "admin", "allies", "content"}
     for domain in sibling_domains:
-        domain_dir = REPO_ROOT / "teleboss" / "domain" / domain
+        domain_dir = _SRC / "domain" / domain
         prevote_files = sorted(domain_dir.glob("prevote*.py"))
         assert prevote_files, f"no prevote*.py under {domain}"
         for path in prevote_files:

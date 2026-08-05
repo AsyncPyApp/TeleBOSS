@@ -7,7 +7,7 @@ import inspect
 
 from helpers import REPO_ROOT, module_imports
 
-_STORAGE = REPO_ROOT / "teleboss/shared/storage"
+_STORAGE = REPO_ROOT / "src/shared/storage"
 
 # Concern modules that must hold logic after the monolith split (T01).
 _CONCERN_MODULES = (
@@ -182,9 +182,9 @@ def test_poll_column_offsets_zero_through_ten_stable() -> None:
 def test_product_callers_import_facade_not_internal_mixins() -> None:
     """Outside ``shared/storage``, product code must not import concern modules."""
     offenders: list[str] = []
-    for path in (REPO_ROOT / "teleboss").rglob("*.py"):
+    for path in (REPO_ROOT / "src").rglob("*.py"):
         rel = path.relative_to(REPO_ROOT).as_posix()
-        if rel.startswith("teleboss/shared/storage/"):
+        if rel.startswith("src/shared/storage/"):
             continue
         for mod in module_imports(path):
             if mod in _INTERNAL_STORAGE_MODULES or any(
