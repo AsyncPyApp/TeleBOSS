@@ -29,7 +29,11 @@ def _lock_callback_handler_order(teleboss_runtime) -> None:
 _MIGRATED_CALLERS: tuple[str, ...] = (
     "teleboss/app/handlers/votes.py",
     "teleboss/app/handlers/op.py",
-    "teleboss/app/host_commands.py",
+    "teleboss/app/host_commands/membership.py",
+    "teleboss/app/host_commands/info.py",
+    "teleboss/app/host_commands/moderation.py",
+    "teleboss/app/host_commands/misc.py",
+    "teleboss/app/host_commands/__init__.py",
     "teleboss/voting/bases.py",
     "teleboss/voting/engine.py",
     "teleboss/domain/moderation/prevote_join.py",
@@ -232,22 +236,70 @@ def test_migrated_callers_forbid_legacy_get_poll_and_update_poll_votes() -> None
     assert not offenders, offenders
 
 
+def _sql_worker_public_method_names() -> set[str]:
+    """Collect SqlWorker callable names across facade + mixin MRO (AST).
+
+    ``SqlWorker`` is composed from mixins under ``teleboss/shared/storage/``;
+    method bodies no longer all live in the facade module.
+    """
+    storage_dir = REPO_ROOT / "teleboss/shared/storage"
+    class_methods: dict[str, set[str]] = {}
+    for path in storage_dir.glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef):
+                class_methods[node.name] = {
+                    n.name
+                    for n in node.body
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                }
+    facade = REPO_ROOT / "teleboss/shared/storage/sql_worker.py"
+    tree = ast.parse(facade.read_text(encoding="utf-8"))
+    sql_worker_bases: list[str] = []
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == "SqlWorker":
+            for base in node.bases:
+                if isinstance(base, ast.Name):
+                    sql_worker_bases.append(base.id)
+            break
+    methods = set(class_methods.get("SqlWorker", ()))
+    for base_name in sql_worker_bases:
+        methods |= class_methods.get(base_name, set())
+    return methods
+
+
 def test_sql_worker_still_defines_legacy_wrappers() -> None:
-    """Compatibility implementation may keep legacy methods until later cleanup."""
-    path = REPO_ROOT / "teleboss/shared/storage/sql_worker.py"
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    methods = {
-        n.name
-        for n in tree.body
-        if isinstance(n, ast.ClassDef) and n.name == "SqlWorker"
-        for n in n.body
-        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
+    """Compatibility methods remain on composed SqlWorker (facade + mixins)."""
+    methods = _sql_worker_public_method_names()
     assert "get_poll" in methods
     assert "update_poll_votes" in methods
     assert "get_open_poll" in methods
     assert "apply_vote" in methods
     assert "get_poll_by_unique_id" in methods
+
+
+def test_sql_worker_composed_methods_via_introspection() -> None:
+    """Runtime MRO exposes the same host-facing poll APIs as before the split."""
+    from teleboss.shared.storage.sql_worker import SqlWorker
+
+    for name in (
+        "get_poll",
+        "update_poll_votes",
+        "get_open_poll",
+        "apply_vote",
+        "get_poll_by_unique_id",
+        "claim_completion",
+        "mark_completed",
+        "mark_failed",
+        "requeue_for_retry",
+        "delete_completed",
+        "get_recoverable_polls",
+        "add_poll",
+        "rem_rec",
+        "params",
+        "captcha",
+    ):
+        assert callable(getattr(SqlWorker, name, None)), name
 
 
 def test_migrated_callers_may_use_rem_rec_for_cleanup() -> None:
@@ -267,7 +319,7 @@ def test_displayed_poll_lookups_use_get_open_poll_with_two_args() -> None:
     """Callback /answer / delete-guard paths must pass chat_id + message_id."""
     targets = {
         "teleboss/app/handlers/votes.py": "call_msg_chk",
-        "teleboss/app/host_commands.py": "add_answer",
+        "teleboss/app/host_commands/membership.py": "add_answer",
         "teleboss/domain/moderation/prevote_messages.py": "pre_return",
     }
     for rel, func_name in targets.items():
@@ -378,7 +430,7 @@ def test_answer_resolves_invite_in_command_chat_only(
 ) -> None:
     """`/answer` must not act on a same message_id invite from another chat."""
     from teleboss.app.host_commands import HostCommands
-    import teleboss.app.host_commands as host_mod
+    import teleboss.app.host_commands.membership as membership_mod
 
     fake_repo.seed(
         _row(
@@ -397,11 +449,11 @@ def test_answer_resolves_invite_in_command_chat_only(
         ),
     )
     bot = MagicMock()
-    monkeypatch.setattr(host_mod, "sqlWorker", fake_repo)
-    monkeypatch.setattr(host_mod, "bot", bot)
-    monkeypatch.setattr(host_mod, "bot_name_checker", lambda _m: True)
-    monkeypatch.setattr(host_mod, "command_forbidden", lambda _m: False)
-    monkeypatch.setattr(host_mod, "topic_reply_fix", lambda _m: 0)
+    monkeypatch.setattr(membership_mod, "sqlWorker", fake_repo)
+    monkeypatch.setattr(membership_mod, "bot", bot)
+    monkeypatch.setattr(membership_mod, "bot_name_checker", lambda _m: True)
+    monkeypatch.setattr(membership_mod, "command_forbidden", lambda _m: False)
+    monkeypatch.setattr(membership_mod, "topic_reply_fix", lambda _m: 0)
 
     message = MagicMock()
     message.chat.id = _CHAT_A

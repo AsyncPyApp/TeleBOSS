@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import ast
+import builtins
+import dis
+import importlib
 
 from helpers import (
     BUILDIN_EXPECTED_KEYS,
@@ -84,6 +87,24 @@ def _filter_matches(handler_dict: dict, data: str) -> bool:
         return False
 
 
+_HOST_COMMANDS_PKG = REPO_ROOT / "teleboss/app/host_commands"
+_HOST_COMMANDS_MIXINS = (
+    "membership.py",
+    "info.py",
+    "moderation.py",
+    "misc.py",
+)
+# Indicative mixin homes from T02 (must stay disjoint and cover HOST_COMMAND_METHODS).
+_HOST_COMMAND_HOMES: dict[str, frozenset[str]] = {
+    "membership.py": frozenset({"add_answer"}),
+    "info.py": frozenset(
+        {"status", "overview", "version", "plugins", "git", "help_msg", "get_id", "start"}
+    ),
+    "moderation.py": frozenset({"mute_user", "pardon", "revoke", "cremate"}),
+    "misc.py": frozenset({"mail", "random_msg", "calc", "niko"}),
+}
+
+
 def test_thin_main_py() -> None:
     main_src = (REPO_ROOT / "main.py").read_text(encoding="utf-8")
     main_tree = ast.parse(main_src)
@@ -94,10 +115,12 @@ def test_thin_main_py() -> None:
         isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.decorator_list
         for n in main_tree.body
     )
-    assert (REPO_ROOT / "teleboss/app/host_commands.py").is_file()
+    assert not (REPO_ROOT / "teleboss/app/host_commands.py").exists()
+    assert (_HOST_COMMANDS_PKG / "__init__.py").is_file()
+    for name in _HOST_COMMANDS_MIXINS:
+        assert (_HOST_COMMANDS_PKG / name).is_file(), name
     for rel in (
         "teleboss/app/commands.py",
-        "teleboss/app/host_commands.py",
         "teleboss/app/handlers/membership.py",
         "teleboss/app/handlers/captcha.py",
         "teleboss/app/handlers/votes.py",
@@ -138,14 +161,46 @@ def test_buildin_commands_keys_and_aliases(teleboss_runtime) -> None:
 
 
 def test_host_commands_method_homes_and_dag() -> None:
-    host_path = REPO_ROOT / "teleboss/app/host_commands.py"
+    assert len(HOST_COMMAND_METHODS) == 17
+    home_union = set().union(*_HOST_COMMAND_HOMES.values())
+    assert home_union == HOST_COMMAND_METHODS
+    seen: set[str] = set()
+    for methods in _HOST_COMMAND_HOMES.values():
+        assert methods.isdisjoint(seen), methods & seen
+        seen |= methods
+
+    init_path = _HOST_COMMANDS_PKG / "__init__.py"
     cmds_path = REPO_ROOT / "teleboss/app/commands.py"
-    host_ast = ast.parse(host_path.read_text(encoding="utf-8"))
+    init_ast = ast.parse(init_path.read_text(encoding="utf-8"))
     cmds_ast = ast.parse(cmds_path.read_text(encoding="utf-8"))
 
-    host_cls = next(n for n in host_ast.body if isinstance(n, ast.ClassDef) and n.name == "HostCommands")
-    host_methods = {n.name for n in host_cls.body if isinstance(n, ast.FunctionDef)}
+    host_cls = next(n for n in init_ast.body if isinstance(n, ast.ClassDef) and n.name == "HostCommands")
+    assert {b.id for b in host_cls.bases if isinstance(b, ast.Name)} == {
+        "MembershipMixin",
+        "InfoMixin",
+        "ModerationMixin",
+        "MiscMixin",
+    }
+    assert not any(isinstance(n, ast.FunctionDef) for n in host_cls.body)
+
+    host_methods: set[str] = set()
+    for name in _HOST_COMMANDS_MIXINS:
+        mixin_ast = ast.parse((_HOST_COMMANDS_PKG / name).read_text(encoding="utf-8"))
+        mixin_methods: set[str] = set()
+        for node in mixin_ast.body:
+            if isinstance(node, ast.ClassDef) and node.name.endswith("Mixin"):
+                mixin_methods.update(
+                    n.name for n in node.body if isinstance(n, ast.FunctionDef)
+                )
+        assert mixin_methods == _HOST_COMMAND_HOMES[name], name
+        host_methods |= mixin_methods
     assert host_methods == HOST_COMMAND_METHODS
+
+    from teleboss.app.host_commands import HostCommands
+
+    for method_name in HOST_COMMAND_METHODS:
+        assert hasattr(HostCommands, method_name), method_name
+        assert callable(getattr(HostCommands, method_name)), method_name
 
     cmds_cls = next(n for n in cmds_ast.body if isinstance(n, ast.ClassDef) and n.name == "BuildInCommands")
     stub_methods = {
@@ -154,14 +209,57 @@ def test_host_commands_method_homes_and_dag() -> None:
     assert stub_methods == PREVOTE_STUB_METHODS
     assert host_methods.isdisjoint(stub_methods)
 
-    imports = module_imports(host_path)
+    package_paths = [init_path, *(_HOST_COMMANDS_PKG / name for name in _HOST_COMMANDS_MIXINS)]
+    imports: set[str] = set()
+    for path in package_paths:
+        imports |= module_imports(path)
     assert not any(m == "teleboss.domain" or m.startswith("teleboss.domain.") for m in imports)
     assert imports.isdisjoint(SHIM_MODS)
     assert "teleboss.app.commands" not in imports
-    allowed_prefixes = ("teleboss.shared.", "teleboss.voting.")
+    allowed_prefixes = (
+        "teleboss.shared.",
+        "teleboss.voting.",
+        "teleboss.app.host_commands.",
+    )
     for mod in imports:
         if mod.startswith("teleboss."):
             assert any(mod == p.rstrip(".") or mod.startswith(p) for p in allowed_prefixes), mod
+
+
+def test_host_commands_mixin_load_globals_bound() -> None:
+    """Each mixin method's LOAD_GLOBAL names must resolve on its defining module.
+
+    Catches missing imports after package split (e.g. ``time.time()`` without ``import time``).
+    """
+    mixin_modules = (
+        "teleboss.app.host_commands.membership",
+        "teleboss.app.host_commands.info",
+        "teleboss.app.host_commands.moderation",
+        "teleboss.app.host_commands.misc",
+    )
+    for mod_name in mixin_modules:
+        mod = importlib.import_module(mod_name)
+        mixin_cls = next(
+            v for v in vars(mod).values() if isinstance(v, type) and v.__name__.endswith("Mixin")
+        )
+        for attr_name, attr in vars(mixin_cls).items():
+            if attr_name.startswith("_"):
+                continue
+            raw = attr.__func__ if isinstance(attr, staticmethod) else attr
+            if not callable(raw) or not hasattr(raw, "__code__"):
+                continue
+            for instr in dis.get_instructions(raw):
+                if instr.opname != "LOAD_GLOBAL":
+                    continue
+                name = instr.argval
+                if isinstance(name, tuple):
+                    name = name[0]
+                if name in ("__build_class__", "super") or hasattr(builtins, name):
+                    continue
+                assert name in mod.__dict__, (
+                    f"{mod_name}.{attr_name} LOAD_GLOBAL {name!r} not bound "
+                    f"(missing import in mixin module?)"
+                )
 
 
 def test_handler_bot_identity_and_shared_callables(teleboss_runtime) -> None:
@@ -232,15 +330,16 @@ def test_callback_tokens_and_op_before_vote_unchanged(teleboss_runtime) -> None:
 def test_handler_sources_forbid_legacy_poll_apis() -> None:
     """votes/op/host must not call get_poll or update_poll_votes (AST gate)."""
     forbidden = frozenset({"get_poll", "update_poll_votes"})
-    for rel in (
-        "teleboss/app/handlers/votes.py",
-        "teleboss/app/handlers/op.py",
-        "teleboss/app/host_commands.py",
-    ):
-        tree = ast.parse((REPO_ROOT / rel).read_text(encoding="utf-8"))
+    paths = [
+        REPO_ROOT / "teleboss/app/handlers/votes.py",
+        REPO_ROOT / "teleboss/app/handlers/op.py",
+        *(_HOST_COMMANDS_PKG / name for name in ("__init__.py", *_HOST_COMMANDS_MIXINS)),
+    ]
+    for path in paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         called: set[str] = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                 called.add(node.func.attr)
         hit = called & forbidden
-        assert not hit, f"{rel} still calls {sorted(hit)}"
+        assert not hit, f"{path.relative_to(REPO_ROOT).as_posix()} still calls {sorted(hit)}"
