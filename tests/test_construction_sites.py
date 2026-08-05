@@ -55,11 +55,11 @@ def test_exactly_one_poll_engine_construction() -> None:
 
 def test_no_post_vote_list_reassignment() -> None:
     assign_hits: list[str] = []
-    for p in [REPO_ROOT / "teleboss/voting/engine.py", REPO_ROOT / "poll_engines.py"]:
-        text = p.read_text(encoding="utf-8")
-        for i, line in enumerate(text.splitlines(), 1):
-            if re.search(r"\bpost_vote_list\s*=", line):
-                assign_hits.append(f"{p.as_posix()}:{i}:{line.strip()}")
+    engine_path = REPO_ROOT / "teleboss/voting/engine.py"
+    text = engine_path.read_text(encoding="utf-8")
+    for i, line in enumerate(text.splitlines(), 1):
+        if re.search(r"\bpost_vote_list\s*=", line):
+            assign_hits.append(f"{engine_path.as_posix()}:{i}:{line.strip()}")
     for p in list(REPO_ROOT.glob("*.py")) + list((REPO_ROOT / "teleboss").rglob("*.py")):
         if p.name.startswith("_t0"):
             continue

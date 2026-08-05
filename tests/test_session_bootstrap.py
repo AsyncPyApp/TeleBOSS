@@ -29,9 +29,9 @@ def test_soft_version_order(runtime_data) -> None:
     assert runtime_data.CODENAME and isinstance(runtime_data.CODENAME, str)
 
 
-def test_utils_bot_is_runtime_bot(utils_mod, teleboss_runtime) -> None:
-    assert utils_mod.bot is teleboss_runtime.bot
-    assert utils_mod.data is teleboss_runtime.data
+def test_runtime_bot_is_singleton(teleboss_runtime, runtime_bot, runtime_data) -> None:
+    assert runtime_bot is teleboss_runtime.bot
+    assert runtime_data is teleboss_runtime.data
 
 
 def test_chat_id_init_smoke_semantics(runtime_data) -> None:

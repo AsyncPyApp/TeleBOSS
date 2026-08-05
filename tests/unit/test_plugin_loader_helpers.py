@@ -72,14 +72,14 @@ def test_forbidden_dec_in_plug_tempfile(teleboss_runtime, tmp_path: Path) -> Non
     assert Plugins.forbidden_dec_in_plug(str(bad_utils)) is True
 
 
-def test_absent_plugins_dir_empty_commands_dict(utils_mod, poll_engine_snapshot) -> None:
+def test_absent_plugins_dir_empty_commands_dict(runtime_data, poll_engine_snapshot) -> None:
     """Regression: missing plugins folder leaves commands_final_dict empty."""
-    import plugin_engine
+    from teleboss.plugin_loader.loader import Plugins
 
     plugin_folder = "plugins"
-    if utils_mod.data.path:
-        plugin_folder = utils_mod.data.path[:-1] + "_plugins"
+    if runtime_data.path:
+        plugin_folder = runtime_data.path[:-1] + "_plugins"
     assert not os.path.isdir(plugin_folder), f"unexpected plugin folder {plugin_folder!r}"
 
-    inst = plugin_engine.Plugins({})
+    inst = Plugins({})
     assert getattr(inst, "commands_final_dict", None) == {}

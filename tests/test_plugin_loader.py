@@ -26,17 +26,17 @@ def test_discovery_and_fail_closed_source_strings() -> None:
     )
 
 
-def test_absent_plugins_folder_empty_commands(utils_mod, poll_engine_snapshot) -> None:
-    import plugin_engine
+def test_absent_plugins_folder_empty_commands(runtime_data, poll_engine_snapshot) -> None:
+    from teleboss.plugin_loader.loader import Plugins
 
     plugin_folder = "plugins"
-    if utils_mod.data.path:
-        plugin_folder = utils_mod.data.path[:-1] + "_plugins"
+    if runtime_data.path:
+        plugin_folder = runtime_data.path[:-1] + "_plugins"
     assert not os.path.isdir(plugin_folder), f"unexpected plugin folder {plugin_folder!r}"
 
-    inst = plugin_engine.Plugins({})
+    inst = Plugins({})
     assert getattr(inst, "commands_final_dict", None) == {}
-    assert not getattr(utils_mod.data, "plugins", None)
+    assert not getattr(runtime_data, "plugins", None)
 
 
 def test_post_vote_list_update_preserves_identity(poll_engine_snapshot) -> None:
@@ -49,14 +49,14 @@ def test_post_vote_list_update_preserves_identity(poll_engine_snapshot) -> None:
     del PollEngine.post_vote_list["__t02_marker__"]
 
 
-def test_plugins_construct_keeps_post_vote_list(utils_mod, poll_engine_snapshot) -> None:
-    import postvote
+def test_plugins_construct_keeps_post_vote_list(poll_engine_snapshot) -> None:
     from teleboss.app.commands import BuildInCommands
+    from teleboss.domain import postvote_registry
     from teleboss.plugin_loader.loader import Plugins
 
     PollEngine = poll_engine_snapshot["PollEngine"]
     pvl_before = PollEngine.post_vote_list
-    postvote.post_vote_list_init()
+    postvote_registry.post_vote_list_init()
     cmds_before = set(PollEngine.post_vote_list)
     plugins = Plugins(BuildInCommands().built_in_commands_dict)
     assert plugins is not None

@@ -88,18 +88,21 @@ def test_prevote_barrels_are_thin_reexports() -> None:
         assert names == exported, domain
 
 
-def test_shim_identity_and_inheritance(utils_mod) -> None:
-    import prevote
-
+def test_domain_prevote_classes_and_inheritance(teleboss_runtime) -> None:
     for name in PREVOTE_EXPECTED_CLASSES:
-        assert hasattr(prevote, name), name
+        found = False
+        for mod_name, class_names in PREVOTE_DOMAIN_CLASS_MAP.items():
+            if name not in class_names:
+                continue
+            mod = importlib.import_module(mod_name)
+            assert hasattr(mod, name), f"{mod_name}.{name}"
+            found = True
+            break
+        assert found, name
 
-    for mod_name, class_names in PREVOTE_DOMAIN_CLASS_MAP.items():
-        mod = importlib.import_module(mod_name)
-        for name in class_names:
-            assert getattr(prevote, name) is getattr(mod, name), name
-
-    assert issubclass(prevote.Kick, prevote.Ban)
-    assert issubclass(prevote.MessageSilentRemover, prevote.MessageRemover)
-    assert issubclass(prevote.OpGlobal, prevote.Op)
-    assert getattr(prevote.Ban, "vote_type", None) == "ban"
+    moderation = importlib.import_module("teleboss.domain.moderation.prevote")
+    admin = importlib.import_module("teleboss.domain.admin.prevote")
+    assert issubclass(moderation.Kick, moderation.Ban)
+    assert issubclass(moderation.MessageSilentRemover, moderation.MessageRemover)
+    assert issubclass(admin.OpGlobal, admin.Op)
+    assert getattr(moderation.Ban, "vote_type", None) == "ban"

@@ -1,4 +1,4 @@
-"""W0 inventory freeze: root shims, product callers, META notes, soft VERSION."""
+"""W0 inventory freeze: banned root names absent, product callers empty, soft VERSION."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from helpers import (
     module_imports,
 )
 
-# Skip inventory noise and non-product trees when scanning shim callers.
+# Skip inventory noise and non-product trees when scanning banned-name callers.
 _SKIP_DIR_PARTS = frozenset(
     {".venv", "tests", ".cursor", "__pycache__", ".git", ".pytest_cache"}
 )
@@ -25,17 +25,14 @@ SHIM_IMPORT_RE = re.compile(
 
 
 def _product_shim_caller_files() -> set[str]:
-    """Return relative paths of product modules that import root shims.
+    """Return relative paths of product modules that import banned root names.
 
-    Excludes venv/tests/plans/cache, and the six root shim files themselves.
-    Paths use POSIX separators (e.g. ``main.py``).
+    Excludes venv/tests/plans/cache. Paths use POSIX separators (e.g. ``main.py``).
     """
     callers: set[str] = set()
     for path in REPO_ROOT.rglob("*.py"):
         rel = path.relative_to(REPO_ROOT)
         if any(part in _SKIP_DIR_PARTS for part in rel.parts):
-            continue
-        if len(rel.parts) == 1 and rel.stem in _SHIM_SET:
             continue
         mods = module_imports(path)
         if any(m.split(".")[0] in _SHIM_SET for m in mods):
@@ -43,11 +40,11 @@ def _product_shim_caller_files() -> set[str]:
     return callers
 
 
-def test_six_root_shim_files_exist() -> None:
+def test_six_root_shim_files_absent() -> None:
     assert len(SHIM_MODS) == 6
     for name in SHIM_MODS:
         path = REPO_ROOT / f"{name}.py"
-        assert path.is_file(), f"missing root shim {path.name}"
+        assert not path.exists(), f"root shim still present: {path.name}"
 
 
 def test_shim_canonical_notes_cover_shim_mods() -> None:
@@ -58,7 +55,7 @@ def test_shim_canonical_notes_cover_shim_mods() -> None:
 
 
 def test_product_shim_callers_match_w0_golden() -> None:
-    """Post-T02: no product files import root shims (shim files remain until T05)."""
+    """No product files import banned root shim names."""
     assert _product_shim_caller_files() == set(PRODUCT_SHIM_CALLER_FILES)
     assert PRODUCT_SHIM_CALLER_FILES == frozenset()
 

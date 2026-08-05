@@ -110,7 +110,7 @@ def test_thin_main_py() -> None:
     assert "from teleboss.app.host_commands import HostCommands" in cmds_src
 
 
-def test_buildin_commands_keys_and_aliases(utils_mod) -> None:
+def test_buildin_commands_keys_and_aliases(teleboss_runtime) -> None:
     from teleboss.app.commands import BuildInCommands
 
     cmds = BuildInCommands().built_in_commands_dict
@@ -164,7 +164,7 @@ def test_host_commands_method_homes_and_dag() -> None:
             assert any(mod == p.rstrip(".") or mod.startswith(p) for p in allowed_prefixes), mod
 
 
-def test_handler_bot_identity_and_shared_callables(utils_mod) -> None:
+def test_handler_bot_identity_and_shared_callables(teleboss_runtime) -> None:
     import main  # noqa: F401 — registers handlers
     from teleboss.app.handlers import captcha as captcha_mod
     from teleboss.app.handlers import help as help_mod
@@ -173,22 +173,22 @@ def test_handler_bot_identity_and_shared_callables(utils_mod) -> None:
     from teleboss.app.handlers import votes as votes_mod
     from teleboss.voting.engine import poll_engine as pe_canon
 
-    assert membership_mod.bot is utils_mod.bot
-    assert captcha_mod.bot is utils_mod.bot
-    assert votes_mod.bot is utils_mod.bot
-    assert op_mod.bot is utils_mod.bot
-    assert help_mod.bot is utils_mod.bot
+    assert membership_mod.bot is teleboss_runtime.bot
+    assert captcha_mod.bot is teleboss_runtime.bot
+    assert votes_mod.bot is teleboss_runtime.bot
+    assert op_mod.bot is teleboss_runtime.bot
+    assert help_mod.bot is teleboss_runtime.bot
     assert votes_mod.poll_engine is pe_canon
     assert op_mod.poll_engine is pe_canon
     assert op_mod.close_vote is votes_mod.close_vote
     assert op_mod.call_msg_chk is votes_mod.call_msg_chk
 
 
-def test_offline_handler_counts_and_order(utils_mod) -> None:
+def test_offline_handler_counts_and_order(teleboss_runtime) -> None:
     import main  # noqa: F401
 
-    msg_handlers = list(getattr(utils_mod.bot, "message_handlers", []))
-    cb_handlers = list(getattr(utils_mod.bot, "callback_query_handlers", []))
+    msg_handlers = list(getattr(teleboss_runtime.bot, "message_handlers", []))
+    cb_handlers = list(getattr(teleboss_runtime.bot, "callback_query_handlers", []))
     assert len(msg_handlers) == HANDLER_MSG_COUNT, f"got {len(msg_handlers)}"
     assert len(cb_handlers) == HANDLER_CB_COUNT, f"got {len(cb_handlers)}"
     assert CALLBACK_PROBE_ORDER.index("op!_close") < CALLBACK_PROBE_ORDER.index("vote!_yes")

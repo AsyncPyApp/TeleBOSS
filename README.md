@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/badge/version-3.3.2-blue)](CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-beta%20%7C%20в%20разработке-orange)](#)
 [![Codename](https://img.shields.io/badge/codename-Deuterium%20Discharge-8A2BE2)](teleboss/shared/config.py)
-[![Python](https://img.shields.io/badge/python-3.11%2B-yellow?logo=python&logoColor=white)](#запуск)
+[![Python](https://img.shields.io/badge/python-3.14.6%2B-yellow?logo=python&logoColor=white)](#запуск)
 [![GitHub stars](https://img.shields.io/github/stars/AsyncPyApp/TeleBOSS?style=flat)](https://github.com/AsyncPyApp/TeleBOSS/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/AsyncPyApp/TeleBOSS?style=flat)](https://github.com/AsyncPyApp/TeleBOSS/forks)
 [![GitHub issues](https://img.shields.io/github/issues/AsyncPyApp/TeleBOSS)](https://github.com/AsyncPyApp/TeleBOSS/issues)
@@ -21,20 +21,21 @@ Telegram-бот для модерации чатов через голосова
 
 ## Запуск
 
+Требуется **Python 3.14.6+** (более старые версии не поддерживаются).
+
 ```bash
 pip install -r requirements.txt
 # положи токен и настройки в конфиг бота
 python main.py
 ```
 
-Для разработки тестов: `pip install -r requirements-dev.txt`, затем `pytest`.
+Для разработки тестов: `pip install -r requirements-dev.txt`, затем `pytest`. Локально предпочтительно использовать `.venv` репозитория.
 
 ## Что где лежит
 
-- `main.py` — точка входа
-- `teleboss/` — основной код (shared, voting, domain, app, плагины)
-- корневые `utils.py`, `prevote.py`, `postvote.py` и т.п. — тонкие шимы для старых импортов
-- `plugins/` рядом с установкой — свои команды (если есть)
+- `main.py` — точка входа (проверка Python 3.14.6+ до импорта продукта)
+- `teleboss/` — основной код (shared, voting, domain, app, plugin_loader)
+- `plugins/` рядом с установкой — свои команды (если есть); импорты только через `teleboss.*`
 
 ## Changelog и версии
 

@@ -1,4 +1,8 @@
 """Thin entry: ordered handler side-effect imports + bootstrap."""
+from teleboss.shared.python_floor import ensure_min_python
+
+ensure_min_python()
+
 from teleboss.app.commands import BuildInCommands
 from teleboss.app.handlers import membership  # noqa: F401  # new_chat_members
 from teleboss.app.handlers import captcha  # noqa: F401

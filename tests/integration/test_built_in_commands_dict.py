@@ -6,7 +6,7 @@ from helpers import BUILDIN_EXPECTED_KEYS
 from teleboss.shared.command import Command
 
 
-def test_built_in_commands_dict_aliases_and_callables(utils_mod) -> None:
+def test_built_in_commands_dict_aliases_and_callables(teleboss_runtime) -> None:
     from teleboss.app.commands import BuildInCommands
 
     cmds = BuildInCommands().built_in_commands_dict

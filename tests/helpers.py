@@ -9,9 +9,10 @@ from packaging.version import parse as parse_version
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# Banned root module names (deleted in T05); keep as inventory / import gate list.
 SHIM_MODS = ("utils", "sql_worker", "poll_engines", "plugin_engine", "prevote", "postvote")
 
-# Documentation labels for root shim → canonical packages (not import strings to exec).
+# Documentation labels for deleted root names → canonical packages (not import strings to exec).
 SHIM_CANONICAL_NOTES: dict[str, str] = {
     "utils": "teleboss.shared.* (barrel: access/bootstrap/calc/command/config/help_ui/parsers/runtime/vote_ui/…)",
     "sql_worker": "teleboss.shared.storage.sql_worker",
@@ -21,7 +22,7 @@ SHIM_CANONICAL_NOTES: dict[str, str] = {
     "postvote": "teleboss.domain.*.postvote + teleboss.domain.postvote_registry",
 }
 
-# Post-T02: main left product shim callers; six root shim files remain until T05.
+# Product tree must not import banned root names (shim files deleted in T05).
 PRODUCT_SHIM_CALLER_FILES: frozenset[str] = frozenset()
 
 POSTVOTE_EXPECTED_KEYS = [

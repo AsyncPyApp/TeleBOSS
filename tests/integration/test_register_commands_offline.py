@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 
-def test_register_commands_offline_delta(utils_mod, runtime_bot) -> None:
+def test_register_commands_offline_delta(runtime_bot) -> None:
     """Assert built-in registration raises message_handler count; restore list after."""
     import main  # noqa: F401 — ensure baseline side-effect handlers exist
     from teleboss.app.commands import BuildInCommands
@@ -27,11 +27,11 @@ def test_register_commands_offline_delta(utils_mod, runtime_bot) -> None:
         assert list(runtime_bot.message_handlers) == baseline
 
 
-def test_prevote_get_buttons_scheme_privacy_matrix(utils_mod, monkeypatch) -> None:
+def test_prevote_get_buttons_scheme_privacy_matrix(runtime_data, monkeypatch) -> None:
     from teleboss.voting.bases import PreVote
 
-    monkeypatch.setattr(utils_mod.data, "bot_id", 999001)
-    anon = utils_mod.data.ANONYMOUS_ID
+    monkeypatch.setattr(runtime_data, "bot_id", 999001)
+    anon = runtime_data.ANONYMOUS_ID
     user_id = 424242
 
     for privacy, list_btn in (
@@ -51,7 +51,7 @@ def test_prevote_get_buttons_scheme_privacy_matrix(utils_mod, monkeypatch) -> No
         assert cancel["user_id"] == user_id
 
     # Bot / anonymous initiator → no cancel.
-    for uid in (utils_mod.data.bot_id, anon):
+    for uid in (runtime_data.bot_id, anon):
         inst = object.__new__(PreVote)
         inst.privacy = "private"
         inst.user_id = uid
@@ -59,7 +59,7 @@ def test_prevote_get_buttons_scheme_privacy_matrix(utils_mod, monkeypatch) -> No
         assert "cancel" not in types_
 
 
-def test_poll_engine_get_abuse_timer(utils_mod, monkeypatch) -> None:
+def test_poll_engine_get_abuse_timer(runtime_bot, runtime_data, monkeypatch) -> None:
     from teleboss.voting.engine import poll_engine
 
     answered: list = []
@@ -68,9 +68,9 @@ def test_poll_engine_get_abuse_timer(utils_mod, monkeypatch) -> None:
         answered.append(kwargs)
         return MagicMock()
 
-    monkeypatch.setattr(utils_mod.bot, "answer_callback_query", _answer)
+    monkeypatch.setattr(runtime_bot, "answer_callback_query", _answer)
     # Smoke init sets wait_timer=0 in debug; restore a real cooldown for this probe.
-    monkeypatch.setattr(utils_mod.data, "wait_timer", 30)
+    monkeypatch.setattr(runtime_data, "wait_timer", 30)
 
     call = SimpleNamespace(
         id="cb-1",

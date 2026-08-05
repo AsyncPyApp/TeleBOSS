@@ -32,7 +32,7 @@ def smoke_workdir(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="session", autouse=True)
 def _seed_argv_before_runtime(smoke_workdir: Path) -> None:
-    """Set sys.argv before any utils / runtime / ConfigData import path."""
+    """Set sys.argv before any runtime / ConfigData import path."""
     sys.argv = ["pytest", str(smoke_workdir)]
 
 
@@ -42,14 +42,6 @@ def teleboss_runtime(_seed_argv_before_runtime):  # noqa: ANN001 — lazy produc
     import teleboss.shared.runtime as runtime
 
     return runtime
-
-
-@pytest.fixture(scope="session")
-def utils_mod(teleboss_runtime):  # noqa: ANN001 — ensures runtime first
-    """Import root utils shim after runtime (same TeleBot singleton)."""
-    import utils
-
-    return utils
 
 
 @pytest.fixture(scope="session")

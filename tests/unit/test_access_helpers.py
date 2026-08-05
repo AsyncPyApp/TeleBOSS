@@ -6,14 +6,14 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 
-def test_allowed_list_locked_and_unlocked(utils_mod) -> None:
+def test_allowed_list_locked_and_unlocked(runtime_data) -> None:
     from teleboss.shared.access import allowed_list
 
     unlocked = allowed_list(locked=False)
     locked = allowed_list(locked=True)
     assert unlocked
     assert locked
-    for name, rus in utils_mod.data.admin_rus.items():
+    for name, rus in runtime_data.admin_rus.items():
         assert rus in unlocked
         assert rus in locked
     # Glyphs: True → ✅; False → ❌ (unlocked) or 🔒 (locked)
@@ -21,7 +21,7 @@ def test_allowed_list_locked_and_unlocked(utils_mod) -> None:
     assert "🔒" in locked or "✅" in locked
 
 
-def test_command_forbidden_private_wrong_main(utils_mod, monkeypatch) -> None:
+def test_command_forbidden_private_wrong_main(runtime_data, monkeypatch) -> None:
     from teleboss.shared import access as access_mod
 
     replies: list = []
@@ -54,13 +54,13 @@ def test_command_forbidden_private_wrong_main(utils_mod, monkeypatch) -> None:
     assert replies and "основном чате" in replies[-1]
 
     main = SimpleNamespace(
-        chat=SimpleNamespace(id=utils_mod.data.main_chat_id),
+        chat=SimpleNamespace(id=runtime_data.main_chat_id),
         from_user=SimpleNamespace(id=42),
     )
     assert access_mod.command_forbidden(main) is None
 
 
-def test_bot_name_checker_mention_and_gate(utils_mod, monkeypatch) -> None:
+def test_bot_name_checker_mention_and_gate(runtime_data, monkeypatch) -> None:
     from teleboss.shared import access as access_mod
 
     # Init-mode smoke sets main_chat_id=-1; set a real chat so get_chat=False path proceeds.
@@ -84,7 +84,7 @@ def test_bot_name_checker_mention_and_gate(utils_mod, monkeypatch) -> None:
     assert access_mod.bot_name_checker(no_text) is True
 
 
-def test_welcome_msg_get_missing_and_empty(utils_mod, tmp_path, monkeypatch) -> None:
+def test_welcome_msg_get_missing_and_empty(runtime_data, tmp_path, monkeypatch) -> None:
     from teleboss.shared import access as access_mod
 
     path = str(tmp_path).replace("\\", "/") + "/"

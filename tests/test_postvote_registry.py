@@ -21,19 +21,14 @@ def test_expected_counts() -> None:
     assert set(mapped) == set(POSTVOTE_EXPECTED_CLASSES)
 
 
-def test_shim_reexports_and_identity(utils_mod) -> None:
-    import postvote
+def test_domain_exports_and_registry_init_symbol(teleboss_runtime) -> None:
     from teleboss.domain import postvote_registry
-
-    missing = [c for c in POSTVOTE_EXPECTED_CLASSES if not hasattr(postvote, c)]
-    assert not missing, missing
-    assert hasattr(postvote, "post_vote_list_init")
-    assert postvote.post_vote_list_init is postvote_registry.post_vote_list_init
 
     for mod_name, names in POSTVOTE_DOMAIN_CLASS_MAP.items():
         mod = importlib.import_module(mod_name)
         for name in names:
-            assert getattr(postvote, name) is getattr(mod, name), name
+            assert hasattr(mod, name), f"{mod_name}.{name}"
+    assert callable(postvote_registry.post_vote_list_init)
 
 
 def test_domain_class_counts() -> None:
@@ -59,13 +54,13 @@ def test_registry_keys_and_update_source() -> None:
 
 
 def test_init_preserves_dict_identity_and_keys(poll_engine_snapshot) -> None:
-    import postvote
+    from teleboss.domain import postvote_registry
 
     PollEngine = poll_engine_snapshot["PollEngine"]
     dict_id_before = id(PollEngine.post_vote_list)
     sentinel = object()
     PollEngine.post_vote_list["_sentinel"] = sentinel  # type: ignore[index]
-    postvote.post_vote_list_init()
+    postvote_registry.post_vote_list_init()
     assert id(PollEngine.post_vote_list) == dict_id_before
     assert PollEngine.post_vote_list.get("_sentinel") is sentinel
     assert all(k in PollEngine.post_vote_list for k in POSTVOTE_EXPECTED_KEYS)
