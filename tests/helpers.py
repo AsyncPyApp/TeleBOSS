@@ -11,6 +11,20 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 SHIM_MODS = ("utils", "sql_worker", "poll_engines", "plugin_engine", "prevote", "postvote")
 
+# Documentation labels for root shim → canonical packages (not import strings to exec).
+SHIM_CANONICAL_NOTES: dict[str, str] = {
+    "utils": "teleboss.shared.* (barrel: access/bootstrap/calc/command/config/help_ui/parsers/runtime/vote_ui/…)",
+    "sql_worker": "teleboss.shared.storage.sql_worker",
+    "poll_engines": "teleboss.voting.* (bases / engine / exceptions)",
+    "plugin_engine": "teleboss.plugin_loader.loader",
+    "prevote": "teleboss.domain.{moderation,settings,admin,allies,content}.prevote",
+    "postvote": "teleboss.domain.*.postvote + teleboss.domain.postvote_registry",
+}
+
+# W0 pre-migrate golden: sole product flat-import shim caller is main.py.
+# T02 empties to frozenset() after main leaves shim callers; shim files remain until T05.
+PRODUCT_SHIM_CALLER_FILES: frozenset[str] = frozenset({"main.py"})
+
 POSTVOTE_EXPECTED_KEYS = [
     "invite",
     "ban",
@@ -241,6 +255,53 @@ MAIN_BOOTSTRAP_ORDER = [
     "poll_engine.auto_restart_polls()",
     "bot." + "_".join(("infinity", "polling")) + "()",
 ]
+
+# Class-level vote_type only (skip Title/Avatar/Allies/Rules/PrivateMode/Timer/Votes
+# dynamic assignments documented as residual offline).
+STABLE_VOTE_TYPES = {
+    "Ban": "ban",
+    "Mute": "ban",
+    "Kick": "ban",
+    "Unban": "unban",
+    "MessageRemover": "delete message",
+    "MessageSilentRemover": "delete message",
+    "NewUserChecker": "captcha",
+    "Thresholds": "threshold",
+    "Rating": "change rate",
+    "Whitelist": "whitelist",
+    "Shield": "shield",
+    "Marmalade": "marmalade",
+    "OpSetup": "op setup",
+    "Op": "op",
+    "OpGlobal": "global op permissions",
+    "RemoveTopic": "remove topic",
+    "Rank": "rank",
+    "Deop": "deop",
+    "CustomPoll": "custom poll",
+}
+
+HANDLER_MSG_COUNT = 1
+HANDLER_CB_COUNT = 9
+CALLBACK_PROBE_ORDER = (
+    "captcha_1",
+    "cancel",
+    "close",
+    "my_vote",
+    "user_votes",
+    "op!_close",
+    "vote!_yes",
+    "help!_cat_0",
+    "help!_main",
+)
+
+META_INFO_TEMPLATE_GOLDEN = {
+    "name": str,
+    "type": str,
+    "version-min": str,
+    "version-target": str,
+    "description": str,
+}
+META_INFO_EXPECTED_KEYS = frozenset(META_INFO_TEMPLATE_GOLDEN)
 
 
 def assert_soft_version_order(min_version: str, version: str) -> None:

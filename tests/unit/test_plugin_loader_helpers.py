@@ -5,7 +5,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from helpers import META_INFO_EXPECTED_KEYS, META_INFO_TEMPLATE_GOLDEN
 from teleboss.shared.command import Command
+
+
+def test_meta_info_template_matches_golden(teleboss_runtime) -> None:
+    from teleboss.plugin_loader import loader
+
+    assert set(loader.META_INFO_TEMPLATE) == META_INFO_EXPECTED_KEYS
+    assert loader.META_INFO_TEMPLATE == META_INFO_TEMPLATE_GOLDEN
+    for key, expected_type in META_INFO_TEMPLATE_GOLDEN.items():
+        assert loader.META_INFO_TEMPLATE[key] is expected_type, key
 
 
 def test_meta_is_valid_complete_and_failures(teleboss_runtime) -> None:

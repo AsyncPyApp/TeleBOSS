@@ -2,29 +2,7 @@
 
 from __future__ import annotations
 
-# Class-level vote_type only (skip Title/Avatar/Allies/Rules/PrivateMode/Timer/Votes
-# dynamic assignments documented as residual offline).
-STABLE_VOTE_TYPES = {
-    "Ban": "ban",
-    "Mute": "ban",
-    "Kick": "ban",
-    "Unban": "unban",
-    "MessageRemover": "delete message",
-    "MessageSilentRemover": "delete message",
-    "NewUserChecker": "captcha",
-    "Thresholds": "threshold",
-    "Rating": "change rate",
-    "Whitelist": "whitelist",
-    "Shield": "shield",
-    "Marmalade": "marmalade",
-    "OpSetup": "op setup",
-    "Op": "op",
-    "OpGlobal": "global op permissions",
-    "RemoveTopic": "remove topic",
-    "Rank": "rank",
-    "Deop": "deop",
-    "CustomPoll": "custom poll",
-}
+from helpers import STABLE_VOTE_TYPES
 
 
 def test_stable_prevote_vote_types_in_registry(poll_engine_snapshot) -> None:

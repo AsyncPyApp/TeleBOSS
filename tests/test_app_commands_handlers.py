@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import ast
 
-from helpers import BUILDIN_EXPECTED_KEYS, REPO_ROOT
+from helpers import (
+    BUILDIN_EXPECTED_KEYS,
+    CALLBACK_PROBE_ORDER,
+    HANDLER_CB_COUNT,
+    HANDLER_MSG_COUNT,
+    REPO_ROOT,
+)
 
 
 class _FakeCall:
@@ -98,21 +104,11 @@ def test_offline_handler_counts_and_order(utils_mod) -> None:
 
     msg_handlers = list(getattr(utils_mod.bot, "message_handlers", []))
     cb_handlers = list(getattr(utils_mod.bot, "callback_query_handlers", []))
-    assert len(msg_handlers) == 1, f"got {len(msg_handlers)}"
-    assert len(cb_handlers) == 9, f"got {len(cb_handlers)}"
+    assert len(msg_handlers) == HANDLER_MSG_COUNT, f"got {len(msg_handlers)}"
+    assert len(cb_handlers) == HANDLER_CB_COUNT, f"got {len(cb_handlers)}"
+    assert CALLBACK_PROBE_ORDER.index("op!_close") < CALLBACK_PROBE_ORDER.index("vote!_yes")
 
-    expected_cb_data = [
-        "captcha_1",
-        "cancel",
-        "close",
-        "my_vote",
-        "user_votes",
-        "op!_close",
-        "vote!_yes",
-        "help!_cat_0",
-        "help!_main",
-    ]
-    for i, probe in enumerate(expected_cb_data):
+    for i, probe in enumerate(CALLBACK_PROBE_ORDER):
         matches = [j for j, h in enumerate(cb_handlers) if _filter_matches(h, probe)]
         assert matches and matches[0] == i, f"probe {probe!r}: matches={matches}, want first={i}"
 
