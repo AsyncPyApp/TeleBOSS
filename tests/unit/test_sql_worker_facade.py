@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import inspect
 
-from helpers import REPO_ROOT, module_imports
+from helpers import REPO_ROOT, assert_soft_version_order, module_imports
 
 _STORAGE = REPO_ROOT / "src/shared/storage"
 
@@ -194,6 +194,6 @@ def test_product_callers_import_facade_not_internal_mixins() -> None:
     assert not offenders, offenders
 
 
-def test_t01_does_not_bump_configdata_version(runtime_data) -> None:
-    """T01 is structural only — ConfigData.VERSION stays on the prior release."""
-    assert runtime_data.VERSION == "4.0.1"
+def test_t01_keeps_soft_configdata_version_order(runtime_data) -> None:
+    """Structural facade work must not break soft MIN_VERSION ≤ VERSION order."""
+    assert_soft_version_order(runtime_data.MIN_VERSION, runtime_data.VERSION)

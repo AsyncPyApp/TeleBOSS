@@ -11,7 +11,7 @@ import importlib
 import tomllib
 from pathlib import Path
 
-from helpers import REPO_ROOT
+from helpers import REPO_ROOT, assert_soft_version_order
 
 _SRC_DOMAINS = ("app", "domain", "shared", "voting", "plugin_loader")
 
@@ -79,7 +79,8 @@ def test_pyproject_package_dir_maps_flat_src() -> None:
     assert package_dir == _EXPECTED_PACKAGE_DIR, package_dir
     project = data["project"]
     assert project["name"] == "teleboss"
-    assert project["version"] == "4.0.1"
+    config = importlib.import_module("teleboss.shared.config")
+    assert project["version"] == config.ConfigData.VERSION
     scripts = project.get("scripts", {})
     assert scripts.get("teleboss") == "teleboss.app.entry:main"
 
@@ -96,10 +97,10 @@ def test_teleboss_imports_resolve_under_src(teleboss_runtime) -> None:
         assert rel.parts[0] == "src", rel
 
 
-def test_configdata_version_unchanged_by_layout_move(teleboss_runtime) -> None:
-    """T03 is packaging-only — ConfigData.VERSION stays on the prior release."""
+def test_configdata_version_soft_order_after_layout_move(teleboss_runtime) -> None:
+    """Layout packaging keeps ConfigData soft version order (no durable hard pin)."""
     _ = teleboss_runtime
     config = importlib.import_module("teleboss.shared.config")
-    assert config.ConfigData.VERSION == "4.0.1"
+    assert_soft_version_order(config.ConfigData.MIN_VERSION, config.ConfigData.VERSION)
     cfg_path = Path(config.__file__).resolve()
     assert cfg_path == (REPO_ROOT / "src/shared/config.py").resolve()

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "teleboss"
-version = "4.0.1"
+version = "5.0.0"
 requires-python = ">=3.14.6"
 dependencies = [
   "pytelegrambotapi>=4.36.0",
