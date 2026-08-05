@@ -9,6 +9,7 @@ rate = true
 admin-fixed = false
 chat-mode = mixed
 thread-id = none
+plugins-mode = directory
 
 [Admin-rules]
 can-change-info = false

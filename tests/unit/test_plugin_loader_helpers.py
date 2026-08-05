@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from helpers import META_INFO_EXPECTED_KEYS, META_INFO_TEMPLATE_GOLDEN
@@ -74,12 +73,15 @@ def test_forbidden_dec_in_plug_tempfile(teleboss_runtime, tmp_path: Path) -> Non
 
 def test_absent_plugins_dir_empty_commands_dict(runtime_data, poll_engine_snapshot) -> None:
     """Regression: missing plugins folder leaves commands_final_dict empty."""
+    import shutil
+    from pathlib import Path
+
     from teleboss.plugin_loader.loader import Plugins
 
-    plugin_folder = "plugins"
-    if runtime_data.path:
-        plugin_folder = runtime_data.path[:-1] + "_plugins"
-    assert not os.path.isdir(plugin_folder), f"unexpected plugin folder {plugin_folder!r}"
+    leftover = Path(runtime_data.path[:-1] + "_plugins")
+    if leftover.is_dir():
+        shutil.rmtree(leftover)
+    assert Plugins.resolve_plugin_directory() is None
 
     inst = Plugins({})
     assert getattr(inst, "commands_final_dict", None) == {}

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from helpers import REPO_ROOT
 
 
@@ -15,7 +13,9 @@ def test_discovery_and_fail_closed_source_strings() -> None:
     loader_src = (REPO_ROOT / "src/plugin_loader/loader.py").read_text(encoding="utf-8")
     assert 'plugin_folder = "plugins"' in loader_src
     assert "plugin_folder = data.path[:-1] + '_plugins'" in loader_src
-    assert "f'{plugin_folder}.{plugin_name}'" in loader_src
+    assert "f'{package_name}.{plugin_name}'" in loader_src
+    assert "os.path.abspath(plugin_folder)" in loader_src
+    assert 'PLUGIN_ENTRY_POINT_GROUP = "teleboss.plugins"' in loader_src
     assert loader_src.count("sys.exit(1)") >= 3
     assert "def forbidden_dec_in_plug" in loader_src
     assert "@bot." in loader_src
@@ -27,12 +27,15 @@ def test_discovery_and_fail_closed_source_strings() -> None:
 
 
 def test_absent_plugins_folder_empty_commands(runtime_data, poll_engine_snapshot) -> None:
+    import shutil
+    from pathlib import Path
+
     from teleboss.plugin_loader.loader import Plugins
 
-    plugin_folder = "plugins"
-    if runtime_data.path:
-        plugin_folder = runtime_data.path[:-1] + "_plugins"
-    assert not os.path.isdir(plugin_folder), f"unexpected plugin folder {plugin_folder!r}"
+    leftover = Path(runtime_data.path[:-1] + "_plugins")
+    if leftover.is_dir():
+        shutil.rmtree(leftover)
+    assert Plugins.resolve_plugin_directory() is None
 
     inst = Plugins({})
     assert getattr(inst, "commands_final_dict", None) == {}

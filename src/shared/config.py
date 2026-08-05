@@ -100,6 +100,7 @@ class ConfigData:
     admin_allowed = __ADMIN_RECOMMENDED  # Admin rights allowed for issuance in the chat
     path = ""  # Outside param/Path to the chat data folder
     token = ""  # Outside param/Bot token
+    plugins_mode = "directory"  # Outside param/Plugin discovery: directory | entry_points | both
     chat_mode = "mixed"  # Outside param
     # Private - the chat is protected with a whitelist
     # Mixed - the protection mode is changed by voting in the chat
@@ -217,6 +218,18 @@ class ConfigData:
             self.thread_id = int(config["Chat"]["thread-id"])
         except (KeyError, TypeError, ValueError):
             pass
+
+        try:
+            raw_plugins_mode = config["Chat"]["plugins-mode"].strip().lower()
+        except (KeyError, TypeError, AttributeError):
+            raw_plugins_mode = "directory"
+        if raw_plugins_mode not in ("directory", "entry_points", "both"):
+            logging.warning(
+                "Incorrect plugins-mode value %r, reset to default (directory)",
+                raw_plugins_mode,
+            )
+            raw_plugins_mode = "directory"
+        self.plugins_mode = raw_plugins_mode
 
         if self.debug:
             self.wait_timer = 0
@@ -365,6 +378,7 @@ class ConfigData:
         config.set("Chat", "admin-fixed", "false")
         config.set("Chat", "chat-mode", "mixed")
         config.set("Chat", "thread-id", "none")
+        config.set("Chat", "plugins-mode", "directory")
         config.add_section("Admin-rules")
         for name, value in self.__ADMIN_RECOMMENDED.items():
             config.set("Admin-rules", name.replace("_", "-"), str(value).lower())
