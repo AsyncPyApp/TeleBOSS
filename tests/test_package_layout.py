@@ -80,7 +80,8 @@ def test_pyproject_package_dir_maps_flat_src() -> None:
     project = data["project"]
     assert project["name"] == "teleboss"
     assert project["version"] == "4.0.1"
-    assert "scripts" not in project, "T03 must not add [project.scripts]"
+    scripts = project.get("scripts", {})
+    assert scripts.get("teleboss") == "teleboss.app.entry:main"
 
 
 def test_teleboss_imports_resolve_under_src(teleboss_runtime) -> None:

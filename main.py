@@ -1,25 +1,10 @@
-"""Thin entry: ordered handler side-effect imports + bootstrap."""
+"""Thin process shim: Python floor then delegate to ``teleboss.app.entry``."""
+
 from teleboss.shared.python_floor import ensure_min_python
 
 ensure_min_python()
 
-from teleboss.app.commands import BuildInCommands
-from teleboss.app.handlers import membership  # noqa: F401  # new_chat_members
-from teleboss.app.handlers import captcha  # noqa: F401
-from teleboss.app.handlers import votes  # noqa: F401  # cancel..user_votes, then op!, then vote!
-from teleboss.app.handlers import help as help_handlers  # noqa: F401  # help!_cat, help!_main
-from teleboss.domain.postvote_registry import post_vote_list_init
-from teleboss.plugin_loader.loader import Plugins
-from teleboss.shared.bootstrap import init, preflight_compatibility, register_commands
-from teleboss.shared.runtime import bot
-from teleboss.voting.engine import poll_engine
+from teleboss.app.entry import main
 
 if __name__ == "__main__":
-    built_in_command_list = BuildInCommands().built_in_commands_dict
-    post_vote_list_init()
-    stored_version = preflight_compatibility()
-    plugins_command_list = Plugins(built_in_command_list).commands_final_dict
-    init(stored_version)
-    register_commands(plugins_command_list, built_in_command_list)
-    poll_engine.auto_restart_polls()
-    bot.infinity_polling()
+    main()

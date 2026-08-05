@@ -258,7 +258,7 @@ MAIN_BOOTSTRAP_ORDER = [
     "bot." + "_".join(("infinity", "polling")) + "()",
 ]
 
-# AST call-name sequence expected in main's ``__main__`` block (recovery after plugins).
+# AST call-name sequence expected in ``teleboss.app.entry.main`` (recovery after plugins).
 MAIN_BOOTSTRAP_AST_CALLS = (
     "BuildInCommands",
     "post_vote_list_init",
@@ -356,17 +356,17 @@ def extract_postvote_registry_keys() -> list[str]:
 
 
 def main_bootstrap_block_source() -> str:
-    """Return the source text of ``main.py``'s ``if __name__ == "__main__"`` block."""
-    main_src = (REPO_ROOT / "main.py").read_text(encoding="utf-8")
-    main_tree = ast.parse(main_src)
-    main_block = None
-    for node in main_tree.body:
-        if isinstance(node, ast.If) and isinstance(node.test, ast.Compare):
-            main_block = node
+    """Return the source text of ``teleboss.app.entry.main`` (canonical bootstrap)."""
+    entry_src = (REPO_ROOT / "src/app/entry.py").read_text(encoding="utf-8")
+    entry_tree = ast.parse(entry_src)
+    main_fn = None
+    for node in entry_tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "main":
+            main_fn = node
             break
-    assert main_block is not None, "__main__ block missing"
-    boot_src = ast.get_source_segment(main_src, main_block)
-    assert boot_src, "could not extract __main__ source"
+    assert main_fn is not None, "entry.main missing"
+    boot_src = ast.get_source_segment(entry_src, main_fn)
+    assert boot_src, "could not extract entry.main source"
     return boot_src
 
 
@@ -383,19 +383,19 @@ def _call_root_name(node: ast.AST) -> str | None:
 
 
 def main_bootstrap_ast_call_names() -> list[str]:
-    """Return top-level call names in main's ``__main__`` block, in source order.
+    """Return top-level call names in ``entry.main``, in source order.
 
     Only direct expression calls and assignment RHS calls (including
     ``Ctor().attr`` chains) are collected; nested argument calls are ignored.
     """
-    main_src = (REPO_ROOT / "main.py").read_text(encoding="utf-8")
-    main_tree = ast.parse(main_src)
-    main_block = None
-    for node in main_tree.body:
-        if isinstance(node, ast.If) and isinstance(node.test, ast.Compare):
-            main_block = node
+    entry_src = (REPO_ROOT / "src/app/entry.py").read_text(encoding="utf-8")
+    entry_tree = ast.parse(entry_src)
+    main_fn = None
+    for node in entry_tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "main":
+            main_fn = node
             break
-    assert main_block is not None, "__main__ block missing"
+    assert main_fn is not None, "entry.main missing"
 
     names: list[str] = []
 
@@ -414,6 +414,6 @@ def main_bootstrap_ast_call_names() -> list[str]:
                 if name:
                     names.append(name)
 
-    for stmt in main_block.body:
+    for stmt in main_fn.body:
         _collect_stmt(stmt)
     return names

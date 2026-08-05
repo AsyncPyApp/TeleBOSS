@@ -10,6 +10,7 @@ from helpers import REPO_ROOT, SHIM_MODS, module_imports
 def test_import_teleboss_entrypoints_and_main(teleboss_runtime) -> None:
     for mod_name in (
         "main",
+        "teleboss.app.entry",
         "teleboss.shared.runtime",
         "teleboss.voting.engine",
         "teleboss.plugin_loader.loader",

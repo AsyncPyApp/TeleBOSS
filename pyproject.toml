@@ -11,6 +11,9 @@ dependencies = [
   "packaging>=26.2",
 ]
 
+[project.scripts]
+teleboss = "teleboss.app.entry:main"
+
 [tool.setuptools]
 packages = [
   "teleboss",

@@ -8,7 +8,11 @@ import traceback
 
 from packaging import version
 from packaging.requirements import Requirement
-from importlib.metadata import version as importlib_version, PackageNotFoundError
+from importlib.metadata import (
+    PackageNotFoundError,
+    distribution,
+    version as importlib_version,
+)
 
 import telebot
 
@@ -117,36 +121,55 @@ def init(stored_version: str) -> None:
 
 
 def check_dependency_versions() -> None:
-    """Validate installed packages against ``requirements.txt`` and exit on failure."""
-    file_name = 'requirements.txt'
+    """Validate the installed ``teleboss`` distribution and its declared deps.
 
-    if not os.path.isfile(file_name):
-        logging.warning(f'File "{file_name}" not found. The bot\'s library version check will not be performed.')
-        return
+    Uses ``importlib.metadata`` (installed package view), not a cwd
+    ``requirements.txt`` path. Missing ``teleboss`` or a required dependency
+    exits with status 1 (fail-closed).
+    """
+    try:
+        dist = distribution("teleboss")
+        importlib_version("teleboss")
+    except PackageNotFoundError:
+        logging.error(
+            "teleboss: package is not installed\n"
+            "Please install TeleBOSS (e.g. pip install -e .) before starting. "
+            "The bot will close."
+        )
+        sys.exit(1)
 
-    with open('requirements.txt', 'r') as f:
+    for req_str in dist.requires or ():
+        try:
+            req = Requirement(req_str)
+        except Exception:
+            logging.warning(
+                f'Unable to parse requirement "{req_str}", it will be skipped.'
+            )
+            continue
 
-        for line in f:
-            if not line.strip() or line.strip().startswith('#'):
-                continue
+        if req.marker is not None and not req.marker.evaluate():
+            continue
 
-            try:
-                req = Requirement(line.strip())
-            except Exception:
-                logging.warning(f'Unable to parse requirement line "{line.strip()}", it will be skipped.')
-                continue
+        try:
+            installed_ver = importlib_version(req.name)
+        except PackageNotFoundError:
+            logging.error(
+                f"{req.name}: package is not installed\n"
+                "Please install the bot's dependencies before starting work. "
+                "The bot will close."
+            )
+            sys.exit(1)
 
-            try:
-                installed_ver = importlib_version(req.name)
-            except PackageNotFoundError:
-                logging.error(f"{req.name}: package is not installed\n"
-                              "Please install the bot's dependencies before starting work. The bot will close.")
-                sys.exit(1)
-
-            if not req.specifier.contains(installed_ver, prereleases=True):
-                logging.error(f"{req.name}: installed {installed_ver}, but {req.specifier} is required\n"
-                              "Please update the bot's dependencies before starting work. The bot will close.")
-                sys.exit(1)
+        if req.specifier and not req.specifier.contains(
+            installed_ver, prereleases=True
+        ):
+            logging.error(
+                f"{req.name}: installed {installed_ver}, but {req.specifier} "
+                "is required\n"
+                "Please update the bot's dependencies before starting work. "
+                "The bot will close."
+            )
+            sys.exit(1)
 
 
 def get_last_commit_info(count_of_commits=1, commit_index=0):

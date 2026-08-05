@@ -116,6 +116,111 @@ def test_preflight_dependency_exit_skips_sql_and_version(
     assert later == []
 
 
+def test_check_dependency_versions_fail_closed_when_package_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Missing installed ``teleboss`` distribution exits 1 (Security M6)."""
+    from importlib.metadata import PackageNotFoundError
+
+    from teleboss.shared import bootstrap
+
+    def _missing(_name: str):  # noqa: ANN001
+        raise PackageNotFoundError("teleboss")
+
+    monkeypatch.setattr(bootstrap, "distribution", _missing)
+    monkeypatch.setattr(bootstrap, "importlib_version", _missing)
+
+    with pytest.raises(SystemExit) as exc_info:
+        bootstrap.check_dependency_versions()
+    assert exc_info.value.code == 1
+
+
+def test_check_dependency_versions_fail_closed_when_dep_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Declared Requires-Dist package missing → exit 1 (Security M6)."""
+    from importlib.metadata import PackageNotFoundError
+
+    from teleboss.shared import bootstrap
+
+    class _FakeDist:
+        requires = ["missing-dep-xyz>=1.0"]
+
+    def _version(name: str):  # noqa: ANN001
+        if name == "teleboss":
+            return "4.0.1"
+        raise PackageNotFoundError(name)
+
+    monkeypatch.setattr(bootstrap, "distribution", lambda _n: _FakeDist())
+    monkeypatch.setattr(bootstrap, "importlib_version", _version)
+
+    with pytest.raises(SystemExit) as exc_info:
+        bootstrap.check_dependency_versions()
+    assert exc_info.value.code == 1
+
+
+def test_entry_main_runtime_call_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``entry.main`` runtime order: preflight before plugins; recovery before poll."""
+    import teleboss.app.entry as entry
+
+    order: list[str] = []
+
+    class _BuiltIns:
+        built_in_commands_dict = {"help": object()}
+
+        def __init__(self) -> None:
+            order.append("BuildInCommands")
+
+    class _Plugins:
+        commands_final_dict = {"help": object()}
+
+        def __init__(self, _built_ins) -> None:  # noqa: ANN001
+            order.append("Plugins")
+
+    monkeypatch.setattr(entry, "BuildInCommands", _BuiltIns)
+    monkeypatch.setattr(
+        entry, "post_vote_list_init", lambda: order.append("post_vote_list_init")
+    )
+    monkeypatch.setattr(
+        entry,
+        "preflight_compatibility",
+        lambda: (order.append("preflight_compatibility") or "4.0.1"),
+    )
+    monkeypatch.setattr(entry, "Plugins", _Plugins)
+    monkeypatch.setattr(
+        entry, "init", lambda _v: order.append("init")
+    )
+    monkeypatch.setattr(
+        entry,
+        "register_commands",
+        lambda *_a: order.append("register_commands"),
+    )
+    poll_label = "_".join(("infinity", "polling"))
+    monkeypatch.setattr(
+        entry.poll_engine,
+        "auto_restart_polls",
+        lambda: order.append("auto_restart_polls"),
+    )
+    monkeypatch.setattr(
+        entry.bot,
+        poll_label,
+        lambda: order.append(poll_label),
+    )
+
+    entry.main()
+    assert order == [
+        "BuildInCommands",
+        "post_vote_list_init",
+        "preflight_compatibility",
+        "Plugins",
+        "init",
+        "register_commands",
+        "auto_restart_polls",
+        poll_label,
+    ]
+    assert order.index("preflight_compatibility") < order.index("Plugins")
+
+
 def test_preflight_sql_failure_skips_version_read(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
