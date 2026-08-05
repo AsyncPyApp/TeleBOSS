@@ -1,8 +1,15 @@
 # TeleBOSS
 
-Telegram-бот для модерации чатов через голосования: бан, кик, настройки, админы и прочее — решает группа, а не один админ.
+[![Version](https://img.shields.io/badge/version-3.3.2-blue)](CHANGELOG.md)
+[![Codename](https://img.shields.io/badge/codename-Deuterium%20Discharge-8A2BE2)](teleboss/shared/config.py)
+[![Python](https://img.shields.io/badge/python-3.11%2B-yellow?logo=python&logoColor=white)](#запуск)
+[![GitHub stars](https://img.shields.io/github/stars/AsyncPyApp/TeleBOSS?style=flat)](https://github.com/AsyncPyApp/TeleBOSS/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/AsyncPyApp/TeleBOSS?style=flat)](https://github.com/AsyncPyApp/TeleBOSS/forks)
+[![GitHub issues](https://img.shields.io/github/issues/AsyncPyApp/TeleBOSS)](https://github.com/AsyncPyApp/TeleBOSS/issues)
+[![Last commit](https://img.shields.io/github/last-commit/AsyncPyApp/TeleBOSS)](https://github.com/AsyncPyApp/TeleBOSS/commits/main)
+[![Contributors](https://img.shields.io/github/contributors/AsyncPyApp/TeleBOSS)](https://github.com/AsyncPyApp/TeleBOSS/graphs/contributors)
 
-Сейчас **3.3.2** «Deuterium Discharge».
+Telegram-бот для модерации чатов через голосования: бан, кик, настройки, админы и прочее — решает группа, а не один админ.
 
 ## Происхождение
 
