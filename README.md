@@ -1,6 +1,7 @@
 # TeleBOSS
 
 [![Version](https://img.shields.io/badge/version-3.3.2-blue)](CHANGELOG.md)
+[![Status](https://img.shields.io/badge/status-beta%20%7C%20в%20разработке-orange)](#)
 [![Codename](https://img.shields.io/badge/codename-Deuterium%20Discharge-8A2BE2)](teleboss/shared/config.py)
 [![Python](https://img.shields.io/badge/python-3.11%2B-yellow?logo=python&logoColor=white)](#запуск)
 [![GitHub stars](https://img.shields.io/github/stars/AsyncPyApp/TeleBOSS?style=flat)](https://github.com/AsyncPyApp/TeleBOSS/stargazers)
@@ -41,3 +42,7 @@ python main.py
 - Версия / дата сборки / мин. совместимость: `teleboss/shared/config.py` (`ConfigData`).
 - Бот при апгрейде дополнительно показывает тело релизного git-коммита.
 - Бамп версии — только осознанный релиз (не «заодно» с обычным фиксом); на релиз синхронизируй `ConfigData` + `CHANGELOG.md` + коммит.
+
+## Backlog
+
+Отложенные эпики и долг (не в текущей работе): [`.cursor/plans/BACKLOG.md`](.cursor/plans/BACKLOG.md).

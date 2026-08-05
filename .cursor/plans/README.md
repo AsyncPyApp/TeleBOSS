@@ -2,8 +2,9 @@
 
 Working plans and task boards for the idea → plan → tasks → execute workflow.
 
-**Commit policy:** commit `README.md` + `templates/` when changing orchestration docs. Do **not** stage working `*-plan.md` or `{{PLAN_ID}}/` boards/tasks in product commits (skills enforce this). Keep them on disk so agents can discover them — do **not** gitignore working plans (gitignore hides them from Cursor Glob/index and breaks `task-executor`).
+**Commit policy:** commit `README.md` + `templates/` + `BACKLOG.md` when changing orchestration docs. Do **not** stage working `*-plan.md` or `{{PLAN_ID}}/` boards/tasks in product commits (skills enforce this). Keep them on disk so agents can discover them — do **not** gitignore working plans (gitignore hides them from Cursor Glob/index and breaks `task-executor`).
 
+- **Backlog / Future:** [BACKLOG.md](BACKLOG.md) — всё, что не делаем прямо сейчас; правила добавления и статусы в файле + `.cursor/rules/backlog.mdc`
 - Templates: [templates/PLAN.template.md](templates/PLAN.template.md), [templates/BOARD.template.md](templates/BOARD.template.md), [templates/TASK.template.md](templates/TASK.template.md)
 - Skills: `.cursor/skills/idea-to-plan`, `plan-to-tasks`, `task-executor`
 - Shared rules: `.cursor/skills/shared/agent-tuning.md`, `experts.md`

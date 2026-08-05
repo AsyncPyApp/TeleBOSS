@@ -14,9 +14,9 @@ Apply these rules on every step of idea → plan → tasks → execution. No exc
 
 6. **Prefer proven, boring solutions** over clever or exotic ones. Match existing project patterns first.
 7. **No speculative dependencies** or new frameworks unless the operator approved and the need is clear.
-8. **Smallest change that works.** Avoid drive-by refactors, unrelated renames, or “while we’re here” edits.
+8. **Smallest change that works.** Avoid drive-by refactors, unrelated renames, or “while we’re here” edits. Deferred / out-of-scope ideas go to `.cursor/plans/BACKLOG.md` (see backlog rule) — do not expand the current task.
 9. **Security by default:** no secrets in commits/logs; least privilege; validate untrusted input (Telegram payloads, callbacks, plugin code).
-10. **Compatibility awareness.** Respect `VERSION` / `MIN_VERSION`, plugin metadata, and storage/format compatibility. Flag breaking changes explicitly. **Conscious version bumps only** (operator-requested release or approved plan §4.4 `VERSION bump needed?: yes`). Never bump `VERSION`/`BUILD_DATE`/`MIN_VERSION`/`CODENAME` on routine feature/fix/refactor commits. Root **`CHANGELOG.md` is mandatory**: on a release, update it in sync with `ConfigData` and the release commit message (bot still surfaces the git commit body on upgrade). **If `VERSION` changes, the same commit subject must name that version** (`[update] Обновление до версии X.Y.Z`).
+10. **Compatibility awareness.** Respect `VERSION` / `MIN_VERSION`, plugin metadata, and storage/format compatibility. Flag breaking changes explicitly. **Conscious version bumps only** (operator-requested release or approved plan §4.4 `VERSION bump needed?: yes`). Never bump `VERSION`/`BUILD_DATE`/`MIN_VERSION`/`CODENAME` on routine feature/fix/refactor commits. Root **`CHANGELOG.md` is mandatory**: on a release, update it in sync with `ConfigData` and the release commit message (bot still surfaces the git commit body on upgrade). **If `VERSION` changes, the same commit subject must name that version** (`[update] Обновление до версии X.Y.Z`). Park intentional future breaks (shim removal, hard DDD cuts) in `BACKLOG.md` until planned.
 
 ## Human-in-the-loop
 
@@ -49,7 +49,7 @@ Apply these rules on every step of idea → plan → tasks → execution. No exc
 - Inventing Telegram Bot API methods, library APIs, or file contents not seen
 - “Probably” / “usually” used as a substitute for reading code
 - Shipping untested security-sensitive paths
-- Expanding scope beyond the agreed plan/task without operator approval
+- Expanding scope beyond the agreed plan/task without operator approval (park deferred work in `BACKLOG.md` instead)
 - Mixing multiple expert roles into one vague answer when Task subagents were required
 - Asking the operator about routine design/tech choices experts can resolve from repo + rules
 - Marking a stage or task complete without a Validator `pass` / `pass_with_notes`, or ignoring Validator `fail`
