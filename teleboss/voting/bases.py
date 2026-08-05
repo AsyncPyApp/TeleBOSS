@@ -17,7 +17,7 @@ from teleboss.shared.parsers import (
 from teleboss.shared.runtime import bot, data, sqlWorker
 from teleboss.shared.vote_ui import make_mailing, vote_make
 from teleboss.voting.engine import poll_engine
-from teleboss.voting.exceptions import InternalBotException
+from teleboss.voting.exceptions import InternalBotException, SilentException
 
 
 class PreVote:
@@ -205,7 +205,20 @@ class PostVote:
     message_vote_id = None
     message_vote_chat_id = None
 
-    def post_vote(self, records):
+    def post_vote(self, records) -> bool | None:
+        """Apply post-vote effects for a claimed poll row.
+
+        Outcome protocol for the completion engine:
+        ``True`` means success; ``False`` means controlled failure (row retained
+        as ``failed``); legacy overrides may return ``None``, which the engine
+        treats as success only when no exception was raised.
+
+        Args:
+            records: Poll row tuple (offsets 0–9 used by handlers).
+
+        Returns:
+            ``True`` on success, ``False`` on caught controlled failure.
+        """
         self.data_list = json.loads(records[6])
         self.message_vote_id = records[1]
         self.message_vote_chat_id = records[3]
@@ -248,15 +261,21 @@ class PostVote:
             else:
                 self.decline()
             self.final_hook(False)
+            return True
+        except SilentException:
+            # Control-flow success: accept already finished UX; skip final_hook.
+            return True
         except (telebot.apihelper.ApiTelegramException, InternalBotException) as e:
             logging.error(f'Error in poll {records[0]} with type "{records[2]}", '
                           f'chat ID {records[3]} and message ID {records[1]}\n{e}')
             self.final_hook(True)
+            return False
         except Exception as e:
             logging.error(f'Unknown error in poll "{records[0]}" with type "{records[2]}", '
                           f'chat ID "{records[3]}" and message ID "{records[1]}"\n{e}')
             logging.error(traceback.format_exc())
             self.final_hook(True)
+            return False
 
     def get_voted_usernames(self, user_list):
         usernames = []

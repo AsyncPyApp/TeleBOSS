@@ -412,19 +412,29 @@ def test_lifecycle_transitions_and_terminal_delete(tmp_path: Path) -> None:
     assert not worker.claim_completion("life")
     assert worker.mark_failed("life")
     assert worker.get_poll_by_unique_id("life")[0][10] == "failed"
-    # failed is not deletable via terminal delete; reclaim path is T02.
     assert not worker.delete_completed("life")
-    # Move failed→completing is not allowed by T01 APIs; insert completing via claim only.
-    # Mark completed requires completing: force state for terminal path coverage.
-    with sqlite3.connect(db_path) as conn:
-        conn.execute(
-            "UPDATE current_polls SET state='completing' WHERE unique_id='life'"
-        )
-        conn.commit()
+    assert worker.requeue_for_retry("life")
+    assert worker.get_poll_by_unique_id("life")[0][10] == "open"
+    assert worker.claim_completion("life")
     assert worker.mark_completed("life")
     assert worker.get_poll_by_unique_id("life")[0][10] == "completed"
     assert worker.delete_completed("life")
     assert worker.get_poll_by_unique_id("life") == []
+
+
+def test_requeue_for_retry_completing_and_rejects_completed(tmp_path: Path) -> None:
+    """Recovery requeue accepts failed/completing only; completed stays put."""
+    db_path = tmp_path / "requeue.db"
+    worker = SqlWorker(str(db_path), _RECOMMENDED)
+    worker.add_poll(*_poll_args("rq", 9, -9))
+    assert not worker.requeue_for_retry("rq")  # still open
+    assert worker.claim_completion("rq")
+    assert worker.requeue_for_retry("rq")
+    assert worker.get_poll_by_unique_id("rq")[0][10] == "open"
+    assert worker.claim_completion("rq")
+    assert worker.mark_completed("rq")
+    assert not worker.requeue_for_retry("rq")
+    assert worker.get_poll_by_unique_id("rq")[0][10] == "completed"
 
 
 def test_recoverable_listing_excludes_completed(tmp_path: Path) -> None:

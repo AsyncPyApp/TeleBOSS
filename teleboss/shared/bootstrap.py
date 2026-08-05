@@ -16,10 +16,39 @@ from teleboss.shared.parsers import html_fix
 from teleboss.shared.runtime import data, bot, sqlWorker
 
 
-def init():
+def preflight_compatibility() -> str:
+    """Validate local deps, SQL/config, and stored version before plugins.
+
+    Performs only host-local checks (no Telegram, Git, threads, or version
+    persistence). Rejects a stored version below ``data.MIN_VERSION``.
+
+    Returns:
+        The stored version string snapshot for later ``init``.
+    """
     check_dependency_versions()
     data.sql_worker_get()
 
+    stored_version = sqlWorker.params("version", default_return=data.VERSION)
+    if version.parse(stored_version) < version.parse(data.MIN_VERSION):
+        logging.error(
+            f"You cannot upgrade from version {stored_version} because compatibility "
+            f"is lost! Minimum version to upgrade to version {data.VERSION} - "
+            f"{data.MIN_VERSION}"
+        )
+        sys.exit(1)
+    return stored_version
+
+
+def init(stored_version: str) -> None:
+    """Finish host startup after plugins are constructed.
+
+    Consumes the preflight version snapshot without re-deciding ``MIN_VERSION``
+    rejection. Network identity, cleanup thread, changelog messaging, and
+    version persistence remain here.
+
+    Args:
+        stored_version: Version string snapshot from ``preflight_compatibility``.
+    """
     try:
         data.bot_id = bot.get_me().id
     except Exception as e:
@@ -29,12 +58,8 @@ def init():
 
     threading.Thread(target=auto_clear, daemon=True).start()
 
-    get_version = sqlWorker.params("version", default_return=data.VERSION)
-    if version.parse(get_version) < version.parse(data.MIN_VERSION):
-        logging.error(f"You cannot upgrade from version {get_version} because compatibility is lost! "
-                      f"Minimum version to upgrade to version {data.VERSION} - {data.MIN_VERSION}")
-        sys.exit(1)
-    elif version.parse(get_version) < version.parse(data.VERSION):
+    get_version = stored_version
+    if version.parse(get_version) < version.parse(data.VERSION):
         change_type = "повышение"
         logging.warning(f"Version {get_version} upgraded to version {data.VERSION}")
     elif version.parse(get_version) > version.parse(data.VERSION):
@@ -91,8 +116,8 @@ def init():
         sys.exit(1)
 
 
-def check_dependency_versions():
-
+def check_dependency_versions() -> None:
+    """Validate installed packages against ``requirements.txt`` and exit on failure."""
     file_name = 'requirements.txt'
 
     if not os.path.isfile(file_name):
@@ -125,7 +150,20 @@ def check_dependency_versions():
 
 
 def get_last_commit_info(count_of_commits=1, commit_index=0):
+    """Return formatted git log text for recent commits.
 
+    Args:
+        count_of_commits: How many commits to include in the log.
+        commit_index: How many newest commits to skip before reading.
+
+    Returns:
+        Formatted commit metadata and body text.
+
+    Raises:
+        FileNotFoundError: When the ``.git`` directory is missing.
+        RuntimeError: When the ``git`` binary is missing or fails.
+        IndexError: When ``commit_index`` exceeds the available history.
+    """
     if not os.path.isdir('.git'):
         raise FileNotFoundError("Folder .git not found")
 
@@ -147,16 +185,31 @@ def get_last_commit_info(count_of_commits=1, commit_index=0):
 
 
 def auto_clear():
+    """Daemon loop that removes completed polls whose timer expired over ten minutes ago.
+
+    Incomplete lifecycle states (``open``, ``completing``, ``failed``) are never
+    deleted here. Only durable ``completed`` rows may be removed via
+    :meth:`~teleboss.shared.storage.sql_worker.SqlWorker.delete_completed`.
+    """
     while True:
         records = sqlWorker.get_all_polls()
+        now = int(time.time())
         for record in records:
-            if record[5] + 600 < int(time.time()):
-                sqlWorker.rem_rec(record[0])
-                logging.info('Removed deprecated poll "' + record[0] + '"')
+            if record[10] != "completed":
+                continue
+            if record[5] + 600 < now:
+                if sqlWorker.delete_completed(record[0]):
+                    logging.info('Removed deprecated poll "%s"', record[0])
         time.sleep(3600)
 
 
 def register_commands(plugins_command_list, built_in_command_list):
+    """Register plugin then built-in message handlers on the shared bot.
+
+    Args:
+        plugins_command_list: Plugin command name to ``Command`` mapping.
+        built_in_command_list: Built-in command name to ``Command`` mapping.
+    """
     for command_list in (plugins_command_list, built_in_command_list):
         for command, command_data in command_list.items():
             commands_list = [command]

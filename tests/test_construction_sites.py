@@ -7,13 +7,28 @@ from pathlib import Path
 
 from helpers import REPO_ROOT
 
-_SKIP_PARTS = {"__pycache__", ".git", ".venv", "venv", "node_modules", ".pytest_cache"}
+# Product-only scan: exclude tests/plans/cache so test doubles may construct
+# PollEngine without breaking the singleton construction-site invariant.
+_SKIP_PARTS = frozenset(
+    {
+        "__pycache__",
+        ".git",
+        ".venv",
+        "venv",
+        "node_modules",
+        ".pytest_cache",
+        "tests",
+        ".cursor",
+    }
+)
 
 
-def _iter_py_files() -> list[Path]:
+def _iter_product_py_files() -> list[Path]:
+    """Yield product ``*.py`` paths (excludes tests and tooling trees)."""
     files: list[Path] = []
     for p in REPO_ROOT.rglob("*.py"):
-        if any(part in _SKIP_PARTS for part in p.parts):
+        rel = p.relative_to(REPO_ROOT)
+        if any(part in _SKIP_PARTS for part in rel.parts):
             continue
         if p.name.startswith("_t0"):
             continue
@@ -40,8 +55,9 @@ def test_singleton_construction_sites_only_in_runtime() -> None:
 
 
 def test_exactly_one_poll_engine_construction() -> None:
+    """Exactly one product ``PollEngine()`` site (runtime); tests may construct freely."""
     ctor_hits: list[str] = []
-    for p in _iter_py_files():
+    for p in _iter_product_py_files():
         text = p.read_text(encoding="utf-8")
         for i, line in enumerate(text.splitlines(), 1):
             s = line.strip()

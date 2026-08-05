@@ -536,6 +536,45 @@ class SqlWorker:
             unique_id, from_state="open", to_state="completing"
         )
 
+    def requeue_for_retry(self, unique_id: str) -> bool:
+        """Requeue a stranded ``completing`` or ``failed`` poll to ``open``.
+
+        Recovery path that makes a non-open incomplete row claimable again.
+        Callers should requeue ``completing`` only from restart recovery
+        (not from live timer/close/threshold contenders). Does not touch
+        ``completed`` rows. ``claim_completion`` remains the only
+        ``open`` → ``completing`` gate.
+
+        Args:
+            unique_id: Logical poll primary key.
+
+        Returns:
+            True when the row was updated to ``open``.
+        """
+        conn = sqlite3.connect(self.dbname, timeout=5.0)
+        try:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("BEGIN IMMEDIATE")
+            except sqlite3.OperationalError:
+                return False
+            cursor.execute(
+                "UPDATE current_polls SET state = 'open' "
+                "WHERE unique_id = ? AND state IN ('failed', 'completing')",
+                (unique_id,),
+            )
+            updated = cursor.rowcount == 1
+            if updated:
+                conn.commit()
+            else:
+                conn.rollback()
+            return updated
+        except sqlite3.Error:
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+
     def mark_failed(self, unique_id: str) -> bool:
         """Transition ``completing`` → ``failed``.
 
