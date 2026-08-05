@@ -7,7 +7,7 @@ from typing import Optional
 
 import telebot
 
-from teleboss.shared.access import bot_name_checker
+from teleboss.shared.access import bot_name_checker, command_forbidden
 from teleboss.shared.parsers import (
     extract_arg,
     formatted_timer,
@@ -68,10 +68,29 @@ class PreVote:
         """Checking for conditions that will cause the command to be canceled prematurely"""
         return False
 
+    def pre_return_command_forbidden(self) -> Optional[bool]:
+        """Cancel early when ``command_forbidden(self.message)`` is true.
+
+        Returns:
+            True when the command must abort; otherwise None.
+        """
+        if command_forbidden(self.message):
+            return True
+        return None
+
     @staticmethod
     def timer_votes_init():
         """timer, votes"""
         return data.global_timer, data.thresholds_get()
+
+    @staticmethod
+    def timer_votes_init_ban():
+        """Ban-timer defaults: ``global_timer_ban`` and ban thresholds.
+
+        Returns:
+            Tuple of (timer seconds, vote threshold).
+        """
+        return data.global_timer_ban, data.thresholds_get(True)
 
     def direct_fn(self):  # If the command was run without arguments
         bot.reply_to(self.message, "Эту команду нельзя запустить без аргументов!")

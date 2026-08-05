@@ -116,27 +116,37 @@ def test_no_domain_cross_imports_postvote() -> None:
 
 
 def test_no_domain_cross_imports_prevote() -> None:
-    for domain in ("moderation", "settings", "admin", "allies", "content"):
-        path = REPO_ROOT / "teleboss" / "domain" / domain / "prevote.py"
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        bad: list[str] = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module:
-                if node.module.startswith("teleboss.domain"):
-                    bad.append(node.module)
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name.startswith("teleboss.domain"):
-                        bad.append(alias.name)
-        assert not bad, f"{domain}: {bad}"
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith(
-                "teleboss."
-            ):
-                ok = node.module.startswith("teleboss.shared.") or node.module.startswith(
-                    "teleboss.voting."
-                )
-                assert ok, f"{domain} bad import {node.module}"
+    sibling_domains = {"moderation", "settings", "admin", "allies", "content"}
+    for domain in sibling_domains:
+        domain_dir = REPO_ROOT / "teleboss" / "domain" / domain
+        prevote_files = sorted(domain_dir.glob("prevote*.py"))
+        assert prevote_files, f"no prevote*.py under {domain}"
+        for path in prevote_files:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            rel = str(path.relative_to(REPO_ROOT)).replace("\\", "/")
+            is_barrel = path.name == "prevote.py"
+            for node in ast.walk(tree):
+                # Absolute teleboss.* only — relative imports bypass the domain prefix check.
+                if isinstance(node, ast.ImportFrom) and node.level and node.level > 0:
+                    raise AssertionError(f"{rel} relative import level={node.level} module={node.module!r}")
+                mods: list[str] = []
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    mods.append(node.module)
+                elif isinstance(node, ast.Import):
+                    mods.extend(alias.name for alias in node.names)
+                for mod in mods:
+                    if not mod.startswith("teleboss."):
+                        continue
+                    if mod.startswith("teleboss.shared.") or mod.startswith("teleboss.voting."):
+                        continue
+                    if mod.startswith("teleboss.domain."):
+                        parts = mod.split(".")
+                        same_domain = len(parts) >= 3 and parts[2] == domain
+                        # Thin barrels may re-export same-domain sibling modules only.
+                        if is_barrel and same_domain:
+                            continue
+                        raise AssertionError(f"{rel} forbidden domain import {mod}")
+                    raise AssertionError(f"{rel} bad layer import {mod}")
 
 
 def test_no_top_level_plugins_package() -> None:
