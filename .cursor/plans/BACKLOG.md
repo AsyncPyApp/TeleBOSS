@@ -49,28 +49,28 @@
 
 | | |
 |--|--|
-| **Status** | `idea` |
+| **Status** | `done` |
 | **Why later** | Сейчас держатся root-шимы и контракты апгрейда; снятие ломает плагины/импорты/`MIN_VERSION` и требует отдельного релиза. |
 | **Notes** | Цель: убрать legacy-пути (корневые шимы `utils`/`prevote`/…, устаревшие форматы хранения/метаданных плагинов, мягкие апгрейды со слишком старых версий). Делать только осознанно: bump `VERSION`/`MIN_VERSION`, секция в `CHANGELOG.md`, релизный коммит. Связь с domain-decomposition (шимы пока permanent по плану). |
-| **Promoted** | — |
+| **Promoted** | `.cursor/plans/20260805-python314-ddd-closeout-plan.md` |
 
 ### B02 — Перенос файлов ради архитектурной целостности и согласованности
 
 | | |
 |--|--|
-| **Status** | `idea` |
+| **Status** | `done` |
 | **Why later** | Крупные переносы вне утверждённого плана раздувают diff и смешивают refactor с фичами; часть уже сделана strangler’ом, остаток — отдельными волнами. |
 | **Notes** | Довести раскладку до согласованных слоёв (`teleboss.shared` / `voting` / `domain` / `app` / `plugin_loader`): добить «кривые» пути, убрать временные остатки, выровнять имена и границы модулей без смены поведения (или с явным планом, если поведение меняется). Не путать с B01 (снятие совместимости) и B03 (глубже DDD). |
-| **Promoted** | — |
+| **Promoted** | `.cursor/plans/20260805-python314-ddd-closeout-plan.md` |
 
 ### B03 — Дедупликация, декомпозиция и переход на DDD
 
 | | |
 |--|--|
-| **Status** | `idea` |
+| **Status** | `done` |
 | **Why later** | После каркаса пакета нужна отдельная продуктовая/архитектурная серия: не «заодно» с cleanup/тестами. |
 | **Notes** | Убрать дубли (хелперы, похожие prevote/postvote-ветки, общие сценарии), дробить толстые модули, укрепить доменные границы (ubiquitous language, domain services vs app handlers vs shared infra). Итог — ясный DDD-скелет поверх уже начатого `teleboss/domain/*`, без скрытого breaking change (breaking → B01 + релиз). |
-| **Promoted** | — |
+| **Promoted** | `.cursor/plans/20260805-python314-ddd-closeout-plan.md` |
 
 ---
 
@@ -79,3 +79,5 @@
 | Когда | Что |
 |-------|-----|
 | 2026-08-05 | Создан backlog; добавлены B01–B03 |
+| 2026-08-05 | B01–B03 → `planned`; Promoted → `.cursor/plans/20260805-python314-ddd-closeout-plan.md` (operator approve) |
+| 2026-08-05 | B01–B03 → `done` (T06 / plan `20260805-python314-ddd-closeout`: Python 3.14.6+ floor, shims removed, domain layout closed, release 4.0.0) |
