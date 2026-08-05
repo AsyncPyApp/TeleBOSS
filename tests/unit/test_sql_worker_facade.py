@@ -7,7 +7,7 @@ import inspect
 
 from helpers import REPO_ROOT, assert_soft_version_order, module_imports
 
-_STORAGE = REPO_ROOT / "src/shared/storage"
+_STORAGE = REPO_ROOT / "src/teleboss/shared/storage"
 
 # Concern modules that must hold logic after the monolith split (T01).
 _CONCERN_MODULES = (
@@ -184,7 +184,7 @@ def test_product_callers_import_facade_not_internal_mixins() -> None:
     offenders: list[str] = []
     for path in (REPO_ROOT / "src").rglob("*.py"):
         rel = path.relative_to(REPO_ROOT).as_posix()
-        if rel.startswith("src/shared/storage/"):
+        if rel.startswith("src/teleboss/shared/storage/"):
             continue
         for mod in module_imports(path):
             if mod in _INTERNAL_STORAGE_MODULES or any(

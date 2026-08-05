@@ -338,7 +338,7 @@ def module_imports(path: Path) -> set[str]:
 
 
 def extract_postvote_registry_keys() -> list[str]:
-    src = (REPO_ROOT / "src/domain/postvote_registry.py").read_text(encoding="utf-8")
+    src = (REPO_ROOT / "src/teleboss/domain/postvote_registry.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     for node in tree.body:
         if isinstance(node, ast.FunctionDef) and node.name == "post_vote_list_init":
@@ -357,7 +357,7 @@ def extract_postvote_registry_keys() -> list[str]:
 
 def main_bootstrap_block_source() -> str:
     """Return the source text of ``teleboss.app.entry.main`` (canonical bootstrap)."""
-    entry_src = (REPO_ROOT / "src/app/entry.py").read_text(encoding="utf-8")
+    entry_src = (REPO_ROOT / "src/teleboss/app/entry.py").read_text(encoding="utf-8")
     entry_tree = ast.parse(entry_src)
     main_fn = None
     for node in entry_tree.body:
@@ -388,7 +388,7 @@ def main_bootstrap_ast_call_names() -> list[str]:
     Only direct expression calls and assignment RHS calls (including
     ``Ctor().attr`` chains) are collected; nested argument calls are ignored.
     """
-    entry_src = (REPO_ROOT / "src/app/entry.py").read_text(encoding="utf-8")
+    entry_src = (REPO_ROOT / "src/teleboss/app/entry.py").read_text(encoding="utf-8")
     entry_tree = ast.parse(entry_src)
     main_fn = None
     for node in entry_tree.body:

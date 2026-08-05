@@ -87,7 +87,7 @@ def _filter_matches(handler_dict: dict, data: str) -> bool:
         return False
 
 
-_HOST_COMMANDS_PKG = REPO_ROOT / "src/app/host_commands"
+_HOST_COMMANDS_PKG = REPO_ROOT / "src/teleboss/app/host_commands"
 _HOST_COMMANDS_MIXINS = (
     "membership.py",
     "info.py",
@@ -115,21 +115,21 @@ def test_thin_main_py() -> None:
         isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.decorator_list
         for n in main_tree.body
     )
-    assert not (REPO_ROOT / "src/app/host_commands.py").exists()
+    assert not (REPO_ROOT / "src/teleboss/app/host_commands.py").exists()
     assert (_HOST_COMMANDS_PKG / "__init__.py").is_file()
     for name in _HOST_COMMANDS_MIXINS:
         assert (_HOST_COMMANDS_PKG / name).is_file(), name
     for rel in (
-        "src/app/commands.py",
-        "src/app/handlers/membership.py",
-        "src/app/handlers/captcha.py",
-        "src/app/handlers/votes.py",
-        "src/app/handlers/op.py",
-        "src/app/handlers/help.py",
+        "src/teleboss/app/commands.py",
+        "src/teleboss/app/handlers/membership.py",
+        "src/teleboss/app/handlers/captcha.py",
+        "src/teleboss/app/handlers/votes.py",
+        "src/teleboss/app/handlers/op.py",
+        "src/teleboss/app/handlers/help.py",
     ):
         assert (REPO_ROOT / rel).is_file(), rel
 
-    cmds_src = (REPO_ROOT / "src/app/commands.py").read_text(encoding="utf-8")
+    cmds_src = (REPO_ROOT / "src/teleboss/app/commands.py").read_text(encoding="utf-8")
     assert "from teleboss.app.host_commands import HostCommands" in cmds_src
 
 
@@ -142,7 +142,7 @@ def test_buildin_commands_keys_and_aliases(teleboss_runtime) -> None:
     for k, expected_alias in BUILDIN_EXPECTED_KEYS.items():
         assert cmds[k].aliases == expected_alias, k
 
-    cmds_ast = ast.parse((REPO_ROOT / "src/app/commands.py").read_text(encoding="utf-8"))
+    cmds_ast = ast.parse((REPO_ROOT / "src/teleboss/app/commands.py").read_text(encoding="utf-8"))
     class_def = next(
         n for n in cmds_ast.body if isinstance(n, ast.ClassDef) and n.name == "BuildInCommands"
     )
@@ -170,7 +170,7 @@ def test_host_commands_method_homes_and_dag() -> None:
         seen |= methods
 
     init_path = _HOST_COMMANDS_PKG / "__init__.py"
-    cmds_path = REPO_ROOT / "src/app/commands.py"
+    cmds_path = REPO_ROOT / "src/teleboss/app/commands.py"
     init_ast = ast.parse(init_path.read_text(encoding="utf-8"))
     cmds_ast = ast.parse(cmds_path.read_text(encoding="utf-8"))
 
@@ -306,7 +306,7 @@ def test_offline_handler_counts_and_order(teleboss_runtime) -> None:
 
 
 def test_votes_mid_import_order() -> None:
-    votes_src = (REPO_ROOT / "src/app/handlers/votes.py").read_text(encoding="utf-8")
+    votes_src = (REPO_ROOT / "src/teleboss/app/handlers/votes.py").read_text(encoding="utf-8")
     assert "from teleboss.app.handlers import op" in votes_src
     vote_pos = votes_src.find('func=lambda call: "vote!" in call.data')
     op_import_pos = votes_src.find("from teleboss.app.handlers import op")
@@ -331,8 +331,8 @@ def test_handler_sources_forbid_legacy_poll_apis() -> None:
     """votes/op/host must not call get_poll or update_poll_votes (AST gate)."""
     forbidden = frozenset({"get_poll", "update_poll_votes"})
     paths = [
-        REPO_ROOT / "src/app/handlers/votes.py",
-        REPO_ROOT / "src/app/handlers/op.py",
+        REPO_ROOT / "src/teleboss/app/handlers/votes.py",
+        REPO_ROOT / "src/teleboss/app/handlers/op.py",
         *(_HOST_COMMANDS_PKG / name for name in ("__init__.py", *_HOST_COMMANDS_MIXINS)),
     ]
     for path in paths:

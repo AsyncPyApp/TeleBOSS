@@ -14,27 +14,8 @@ dependencies = [
 [project.scripts]
 teleboss = "teleboss.app.entry:main"
 
-[tool.setuptools]
-packages = [
-  "teleboss",
-  "teleboss.app",
-  "teleboss.app.handlers",
-  "teleboss.app.host_commands",
-  "teleboss.domain",
-  "teleboss.domain.admin",
-  "teleboss.domain.allies",
-  "teleboss.domain.content",
-  "teleboss.domain.moderation",
-  "teleboss.domain.settings",
-  "teleboss.plugin_loader",
-  "teleboss.shared",
-  "teleboss.shared.storage",
-  "teleboss.voting",
-]
-
 [tool.setuptools.package-dir]
-"teleboss.app" = "src/app"
-"teleboss.domain" = "src/domain"
-"teleboss.shared" = "src/shared"
-"teleboss.voting" = "src/voting"
-"teleboss.plugin_loader" = "src/plugin_loader"
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]

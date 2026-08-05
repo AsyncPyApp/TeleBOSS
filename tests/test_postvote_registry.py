@@ -46,7 +46,7 @@ def test_registry_keys_and_update_source() -> None:
     reg_keys = extract_postvote_registry_keys()
     assert len(reg_keys) == 30
     assert reg_keys == POSTVOTE_EXPECTED_KEYS
-    reg_src = (REPO_ROOT / "src/domain/postvote_registry.py").read_text(encoding="utf-8")
+    reg_src = (REPO_ROOT / "src/teleboss/domain/postvote_registry.py").read_text(encoding="utf-8")
     assert "PollEngine.post_vote_list.update(" in reg_src
     assert "PollEngine.post_vote_list =" not in reg_src.replace(
         "PollEngine.post_vote_list.update", ""

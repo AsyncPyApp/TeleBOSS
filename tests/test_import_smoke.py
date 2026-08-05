@@ -25,7 +25,7 @@ def test_main_imports_only_teleboss_product() -> None:
     roots = {m.split(".")[0] for m in module_imports(REPO_ROOT / "main.py")}
     assert roots.isdisjoint(SHIM_MODS)
     assert "teleboss" in roots
-    assert (REPO_ROOT / "src/shared/python_floor.py").is_file()
+    assert (REPO_ROOT / "src/teleboss/shared/python_floor.py").is_file()
 
 
 def test_main_calls_python_floor_before_product_imports() -> None:

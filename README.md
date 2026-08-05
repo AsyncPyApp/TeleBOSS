@@ -2,7 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-5.0.0-blue)](CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-beta%20%7C%20в%20разработке-orange)](#)
-[![Codename](https://img.shields.io/badge/codename-Deuterium%20Discharge-8A2BE2)](src/shared/config.py)
+[![Codename](https://img.shields.io/badge/codename-Deuterium%20Discharge-8A2BE2)](src/teleboss/shared/config.py)
 [![Python](https://img.shields.io/badge/python-3.14.6%2B-yellow?logo=python&logoColor=white)](#запуск)
 [![GitHub stars](https://img.shields.io/github/stars/AsyncPyApp/TeleBOSS?style=flat)](https://github.com/AsyncPyApp/TeleBOSS/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/AsyncPyApp/TeleBOSS?style=flat)](https://github.com/AsyncPyApp/TeleBOSS/forks)
@@ -37,13 +37,13 @@ teleboss
 ## Что где лежит
 
 - `main.py` — тонкая точка входа (проверка Python 3.14.6+ до импорта продукта); консольная команда `teleboss` из `pyproject.toml`
-- `src/` — физический код (`app`, `domain`, `shared`, `voting`, `plugin_loader`); логические импорты `teleboss.*`
+- `src/teleboss/` — пакет (`app`, `domain`, `shared`, `voting`, `plugin_loader`); импорты `teleboss.*`
 - `plugins/` рядом с установкой — каталог плагинов и/или entry points `teleboss.plugins` (по конфигу)
 
 ## Changelog и версии
 
 - История релизов: корневой [`CHANGELOG.md`](CHANGELOG.md).
-- Версия / дата сборки / мин. совместимость: `src/shared/config.py` (`ConfigData`).
+- Версия / дата сборки / мин. совместимость: `src/teleboss/shared/config.py` (`ConfigData`).
 - Бот при апгрейде дополнительно показывает тело релизного git-коммита.
 - Бамп версии — только осознанный релиз (не «заодно» с обычным фиксом); на релиз синхронизируй `ConfigData` + `CHANGELOG.md` + коммит.
 

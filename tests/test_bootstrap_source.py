@@ -14,7 +14,7 @@ from helpers import (
 
 
 def test_bootstrap_py_needles() -> None:
-    boot = (REPO_ROOT / "src/shared/bootstrap.py").read_text(encoding="utf-8")
+    boot = (REPO_ROOT / "src/teleboss/shared/bootstrap.py").read_text(encoding="utf-8")
     assert "def preflight_compatibility()" in boot
     assert "data.MIN_VERSION" in boot
     assert "sys.exit(1)" in boot
@@ -40,7 +40,7 @@ def test_main_bootstrap_ast_call_order() -> None:
 
 
 def test_entry_handler_import_order() -> None:
-    entry_src = (REPO_ROOT / "src/app/entry.py").read_text(encoding="utf-8")
+    entry_src = (REPO_ROOT / "src/teleboss/app/entry.py").read_text(encoding="utf-8")
     entry_tree = ast.parse(entry_src)
     import_names: list[str] = []
     for n in entry_tree.body:
@@ -72,13 +72,13 @@ def test_main_does_not_import_shims() -> None:
 
 def test_membership_uses_prevote_new_user_checker() -> None:
     """Join-path still goes through prevote.NewUserChecker (may live in handler, not thin main)."""
-    membership = (REPO_ROOT / "src/app/handlers/membership.py").read_text(encoding="utf-8")
+    membership = (REPO_ROOT / "src/teleboss/app/handlers/membership.py").read_text(encoding="utf-8")
     assert "NewUserChecker" in membership
     assert "prevote" in membership or "teleboss.domain" in membership
 
 
 def test_post_vote_list_init_before_plugins() -> None:
-    entry_src = (REPO_ROOT / "src/app/entry.py").read_text(encoding="utf-8")
+    entry_src = (REPO_ROOT / "src/teleboss/app/entry.py").read_text(encoding="utf-8")
     init_pos = entry_src.find("post_vote_list_init()")
     preflight_pos = entry_src.find("preflight_compatibility()")
     plugins_pos = entry_src.find("Plugins(")

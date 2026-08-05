@@ -1,8 +1,7 @@
-"""Physical flat ``src/`` layout + setuptools ``package-dir`` guards.
+"""Standard ``src/teleboss/`` layout guards.
 
-Plan ``20260805-src-package-elephants`` T03 / Security M1:
-flat ``src/{app,domain,...}``, no ``src/teleboss/`` product tree, root
-``teleboss/`` namespace anchor only, imports remain ``teleboss.*``.
+Physical package tree lives under ``src/teleboss/``; imports remain ``teleboss.*``.
+No root ``teleboss/`` namespace-anchor package and no flat ``src/{app,...}``.
 """
 
 from __future__ import annotations
@@ -15,22 +14,13 @@ from helpers import REPO_ROOT, assert_soft_version_order
 
 _SRC_DOMAINS = ("app", "domain", "shared", "voting", "plugin_loader")
 
-_EXPECTED_PACKAGE_DIR = {
-    "teleboss.app": "src/app",
-    "teleboss.domain": "src/domain",
-    "teleboss.shared": "src/shared",
-    "teleboss.voting": "src/voting",
-    "teleboss.plugin_loader": "src/plugin_loader",
-}
-
-# One importable module per mapped top-level package (resolves via package-dir).
 _IMPORT_FILE_CASES = (
-    ("teleboss.app", "src/app/__init__.py"),
-    ("teleboss.domain", "src/domain/__init__.py"),
-    ("teleboss.shared", "src/shared/__init__.py"),
-    ("teleboss.voting", "src/voting/__init__.py"),
-    ("teleboss.plugin_loader", "src/plugin_loader/__init__.py"),
-    ("teleboss.shared.config", "src/shared/config.py"),
+    ("teleboss.app", "src/teleboss/app/__init__.py"),
+    ("teleboss.domain", "src/teleboss/domain/__init__.py"),
+    ("teleboss.shared", "src/teleboss/shared/__init__.py"),
+    ("teleboss.voting", "src/teleboss/voting/__init__.py"),
+    ("teleboss.plugin_loader", "src/teleboss/plugin_loader/__init__.py"),
+    ("teleboss.shared.config", "src/teleboss/shared/config.py"),
 )
 
 
@@ -41,42 +31,44 @@ def _load_pyproject() -> dict:
         return tomllib.load(fh)
 
 
-def test_flat_src_domains_exist() -> None:
-    """Assert product code lives under flat ``src/{app,domain,...}``."""
-    src = REPO_ROOT / "src"
-    assert src.is_dir()
+def test_src_teleboss_domains_exist() -> None:
+    """Assert product code lives under ``src/teleboss/{app,domain,...}``."""
+    pkg = REPO_ROOT / "src" / "teleboss"
+    assert pkg.is_dir()
+    assert (pkg / "__init__.py").is_file()
     for name in _SRC_DOMAINS:
-        domain = src / name
+        domain = pkg / name
         assert domain.is_dir(), name
         assert (domain / "__init__.py").is_file(), name
 
 
-def test_no_src_teleboss_product_tree() -> None:
-    """Forbid nested ``src/teleboss/`` product code (plan §4.1 / Security M1)."""
-    nested = REPO_ROOT / "src" / "teleboss"
-    assert not nested.exists(), "src/teleboss must not exist"
+def test_no_root_teleboss_package() -> None:
+    """Forbid root ``teleboss/`` package tree (layout lives under ``src/``)."""
+    assert not (REPO_ROOT / "teleboss").exists(), "root teleboss/ must not exist"
 
 
-def test_root_teleboss_is_namespace_anchor_only() -> None:
-    """Root ``teleboss/`` keeps only ``__init__.py`` — no duplicate code tree."""
-    root_pkg = REPO_ROOT / "teleboss"
-    assert root_pkg.is_dir()
-    assert (root_pkg / "__init__.py").is_file()
+def test_no_flat_src_domain_trees() -> None:
+    """Forbid leftover flat ``src/{app,domain,...}`` siblings of ``teleboss``."""
+    src = REPO_ROOT / "src"
+    # Ignore local packaging leftovers (gitignored ``*.egg-info``).
     children = sorted(
         p.name
-        for p in root_pkg.iterdir()
-        if p.name != "__pycache__" and not p.name.endswith(".pyc")
+        for p in src.iterdir()
+        if p.is_dir() and not p.name.endswith(".egg-info")
     )
-    assert children == ["__init__.py"], children
+    assert children == ["teleboss"], children
     for name in _SRC_DOMAINS:
-        assert not (root_pkg / name).exists(), f"duplicate tree teleboss/{name}"
+        assert not (src / name).exists(), f"flat src/{name} must not exist"
 
 
-def test_pyproject_package_dir_maps_flat_src() -> None:
-    """``[tool.setuptools.package-dir]`` maps ``teleboss.*`` onto flat ``src/``."""
+def test_pyproject_src_layout() -> None:
+    """``package-dir`` maps ``""`` → ``src``; packages discovered under ``src``."""
     data = _load_pyproject()
-    package_dir = data.get("tool", {}).get("setuptools", {}).get("package-dir", {})
-    assert package_dir == _EXPECTED_PACKAGE_DIR, package_dir
+    setuptools = data.get("tool", {}).get("setuptools", {})
+    package_dir = setuptools.get("package-dir", {})
+    assert package_dir == {"": "src"}, package_dir
+    find = setuptools.get("packages", {}).get("find", {})
+    assert find.get("where") == ["src"], find
     project = data["project"]
     assert project["name"] == "teleboss"
     config = importlib.import_module("teleboss.shared.config")
@@ -86,7 +78,7 @@ def test_pyproject_package_dir_maps_flat_src() -> None:
 
 
 def test_teleboss_imports_resolve_under_src(teleboss_runtime) -> None:
-    """Editable/install mapping: ``import teleboss.*`` loads files under ``src/``."""
+    """Editable/install mapping: ``import teleboss.*`` loads files under ``src/teleboss/``."""
     _ = teleboss_runtime  # fixture ensures package is importable
     for mod_name, rel_path in _IMPORT_FILE_CASES:
         mod = importlib.import_module(mod_name)
@@ -94,7 +86,7 @@ def test_teleboss_imports_resolve_under_src(teleboss_runtime) -> None:
         expected = (REPO_ROOT / rel_path).resolve()
         assert mod_file == expected, (mod_name, mod_file, expected)
         rel = mod_file.relative_to(REPO_ROOT)
-        assert rel.parts[0] == "src", rel
+        assert rel.parts[:2] == ("src", "teleboss"), rel
 
 
 def test_configdata_version_soft_order_after_layout_move(teleboss_runtime) -> None:
@@ -103,4 +95,4 @@ def test_configdata_version_soft_order_after_layout_move(teleboss_runtime) -> No
     config = importlib.import_module("teleboss.shared.config")
     assert_soft_version_order(config.ConfigData.MIN_VERSION, config.ConfigData.VERSION)
     cfg_path = Path(config.__file__).resolve()
-    assert cfg_path == (REPO_ROOT / "src/shared/config.py").resolve()
+    assert cfg_path == (REPO_ROOT / "src/teleboss/shared/config.py").resolve()

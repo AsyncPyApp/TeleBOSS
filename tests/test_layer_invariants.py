@@ -12,7 +12,7 @@ SHIM_IMPORT_RE = re.compile(
     re.MULTILINE,
 )
 
-_SRC = REPO_ROOT / "src"
+_SRC = REPO_ROOT / "src" / "teleboss"
 
 
 def test_no_root_shim_imports_under_teleboss() -> None:
@@ -27,10 +27,10 @@ def test_no_root_shim_imports_under_teleboss() -> None:
 
 def test_empty_package_inits() -> None:
     for rel in (
-        "teleboss/__init__.py",
-        "src/shared/__init__.py",
-        "src/voting/__init__.py",
-        "src/plugin_loader/__init__.py",
+        "src/teleboss/__init__.py",
+        "src/teleboss/shared/__init__.py",
+        "src/teleboss/voting/__init__.py",
+        "src/teleboss/plugin_loader/__init__.py",
     ):
         text = (REPO_ROOT / rel).read_text(encoding="utf-8").strip()
         assert text == "", f"{rel} not empty: {text!r}"
@@ -128,7 +128,7 @@ def test_no_domain_cross_imports_prevote() -> None:
             rel = str(path.relative_to(REPO_ROOT)).replace("\\", "/")
             is_barrel = path.name == "prevote.py"
             for node in ast.walk(tree):
-                # Absolute teleboss.* only — relative imports bypass the domain prefix check.
+                # Absolute teleboss.* only вЂ” relative imports bypass the domain prefix check.
                 if isinstance(node, ast.ImportFrom) and node.level and node.level > 0:
                     raise AssertionError(f"{rel} relative import level={node.level} module={node.module!r}")
                 mods: list[str] = []
