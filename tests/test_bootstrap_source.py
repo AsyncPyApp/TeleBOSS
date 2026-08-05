@@ -4,14 +4,22 @@ from __future__ import annotations
 
 import ast
 
-from helpers import MAIN_BOOTSTRAP_ORDER, REPO_ROOT, main_bootstrap_block_source
+from helpers import (
+    MAIN_BOOTSTRAP_AST_CALLS,
+    MAIN_BOOTSTRAP_ORDER,
+    REPO_ROOT,
+    main_bootstrap_ast_call_names,
+    main_bootstrap_block_source,
+)
 
 
 def test_bootstrap_py_needles() -> None:
     boot = (REPO_ROOT / "teleboss/shared/bootstrap.py").read_text(encoding="utf-8")
+    assert "def preflight_compatibility()" in boot
     assert "data.MIN_VERSION" in boot
     assert "sys.exit(1)" in boot
     assert "for command_list in (plugins_command_list, built_in_command_list):" in boot
+    assert "def init(stored_version" in boot
 
 
 def test_main_bootstrap_order() -> None:
@@ -19,6 +27,13 @@ def test_main_bootstrap_order() -> None:
     positions = [boot_src.find(n) for n in MAIN_BOOTSTRAP_ORDER]
     assert all(p >= 0 for p in positions), f"missing needles positions={positions}"
     assert positions == sorted(positions), f"order wrong positions={positions}"
+
+
+def test_main_bootstrap_ast_call_order() -> None:
+    """AST-aware exact order: post-votes → preflight → plugins → init → register → recovery."""
+    names = main_bootstrap_ast_call_names()
+    expected = list(MAIN_BOOTSTRAP_AST_CALLS)
+    assert names == expected, f"AST call order wrong: {names} != {expected}"
 
 
 def test_main_handler_import_order() -> None:
@@ -52,5 +67,6 @@ def test_membership_uses_prevote_new_user_checker() -> None:
 def test_post_vote_list_init_before_plugins() -> None:
     main_src = (REPO_ROOT / "main.py").read_text(encoding="utf-8")
     init_pos = main_src.find("post_vote_list_init()")
+    preflight_pos = main_src.find("preflight_compatibility()")
     plugins_pos = main_src.find("Plugins(")
-    assert 0 <= init_pos < plugins_pos
+    assert 0 <= init_pos < preflight_pos < plugins_pos

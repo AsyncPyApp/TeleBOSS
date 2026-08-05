@@ -246,16 +246,29 @@ BUILDIN_EXPECTED_KEYS = {
 }
 
 # Built at runtime so suite sources never embed the banned contiguous substring.
-# "\n    init()" avoids a false match inside post_vote_list_init().
+# "\n    init(" avoids a false match inside post_vote_list_init().
 MAIN_BOOTSTRAP_ORDER = [
     "BuildInCommands()",
     "post_vote_list_init()",
+    "preflight_compatibility()",
     "Plugins(",
-    "\n    init()",
+    "\n    init(stored_version)",
     "register_commands(",
     "poll_engine.auto_restart_polls()",
     "bot." + "_".join(("infinity", "polling")) + "()",
 ]
+
+# AST call-name sequence expected in main's ``__main__`` block (recovery after plugins).
+MAIN_BOOTSTRAP_AST_CALLS = (
+    "BuildInCommands",
+    "post_vote_list_init",
+    "preflight_compatibility",
+    "Plugins",
+    "init",
+    "register_commands",
+    "auto_restart_polls",
+    "_".join(("infinity", "polling")),
+)
 
 # Class-level vote_type only (skip Title/Avatar/Allies/Rules/PrivateMode/Timer/Votes
 # dynamic assignments documented as residual offline).
@@ -343,6 +356,7 @@ def extract_postvote_registry_keys() -> list[str]:
 
 
 def main_bootstrap_block_source() -> str:
+    """Return the source text of ``main.py``'s ``if __name__ == "__main__"`` block."""
     main_src = (REPO_ROOT / "main.py").read_text(encoding="utf-8")
     main_tree = ast.parse(main_src)
     main_block = None
@@ -354,3 +368,52 @@ def main_bootstrap_block_source() -> str:
     boot_src = ast.get_source_segment(main_src, main_block)
     assert boot_src, "could not extract __main__ source"
     return boot_src
+
+
+def _call_root_name(node: ast.AST) -> str | None:
+    """Return the root callable name for a Call node, if resolvable."""
+    if not isinstance(node, ast.Call):
+        return None
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return None
+
+
+def main_bootstrap_ast_call_names() -> list[str]:
+    """Return top-level call names in main's ``__main__`` block, in source order.
+
+    Only direct expression calls and assignment RHS calls (including
+    ``Ctor().attr`` chains) are collected; nested argument calls are ignored.
+    """
+    main_src = (REPO_ROOT / "main.py").read_text(encoding="utf-8")
+    main_tree = ast.parse(main_src)
+    main_block = None
+    for node in main_tree.body:
+        if isinstance(node, ast.If) and isinstance(node.test, ast.Compare):
+            main_block = node
+            break
+    assert main_block is not None, "__main__ block missing"
+
+    names: list[str] = []
+
+    def _collect_stmt(stmt: ast.stmt) -> None:
+        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
+            name = _call_root_name(stmt.value)
+            if name:
+                names.append(name)
+            return
+        if isinstance(stmt, ast.Assign):
+            value = stmt.value
+            while isinstance(value, ast.Attribute):
+                value = value.value
+            if isinstance(value, ast.Call):
+                name = _call_root_name(value)
+                if name:
+                    names.append(name)
+
+    for stmt in main_block.body:
+        _collect_stmt(stmt)
+    return names
