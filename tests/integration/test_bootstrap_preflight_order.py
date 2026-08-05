@@ -1,4 +1,4 @@
-"""Offline coverage for ``preflight_compatibility`` and poison-plugin ordering."""
+"""Durable offline regressions for bootstrap preflight order and poison-plugin gate."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Offline unit tests for current_polls schema migration and repository APIs."""
+"""Durable offline regressions for poll storage integrity (schema, migration, votes)."""
 
 import json
 import sqlite3
@@ -454,6 +454,7 @@ def test_recoverable_listing_excludes_completed(tmp_path: Path) -> None:
 
 
 def test_concurrent_apply_vote_both_persist(tmp_path: Path) -> None:
+    """Two independent SqlWorkers + Barrier: both valid votes persist; no partial JSON."""
     db_path = tmp_path / "concurrent_vote.db"
     SqlWorker(str(db_path), _RECOMMENDED).add_poll(
         *_poll_args("cv", 8, -8, buttons=json.dumps([{"user_list": []}]))
@@ -471,7 +472,8 @@ def test_concurrent_apply_vote_both_persist(tmp_path: Path) -> None:
             data[0]["user_list"].append(user_id)
             return json.dumps(data)
 
-        result = local.apply_vote(-8, 8, mutator, busy_timeout=10.0)
+        # Generous busy_timeout so IMMEDIATE serialization yields two OK outcomes.
+        result = local.apply_vote(-8, 8, mutator, busy_timeout=30.0)
         with lock:
             statuses.append(result.status)
 
@@ -482,20 +484,28 @@ def test_concurrent_apply_vote_both_persist(tmp_path: Path) -> None:
     for t in threads:
         t.start()
     for t in threads:
-        t.join(timeout=30)
+        t.join(timeout=60)
         assert not t.is_alive()
-    assert statuses.count(ApplyVoteStatus.OK) >= 1
+    assert len(statuses) == 2
+    assert statuses.count(ApplyVoteStatus.OK) == 2
+
+    # Fresh SqlWorker + raw sqlite3 connection both see durable accumulated JSON.
     final = SqlWorker(str(db_path), _RECOMMENDED).get_open_poll(-8, 8)[0]
-    # Persisted buttons must remain valid JSON after concurrent mutations.
     users = json.loads(final[4])[0]["user_list"]
-    assert isinstance(users, list)
-    # Serialized IMMEDIATE votes: both OK should accumulate; one busy is allowed.
-    if statuses.count(ApplyVoteStatus.OK) == 2:
-        assert sorted(users) == [101, 202]
-    else:
-        assert set(users) <= {101, 202}
-        assert len(users) >= 1
-        assert ApplyVoteStatus.BUSY in statuses or ApplyVoteStatus.OK in statuses
+    assert sorted(users) == [101, 202]
+    assert final[10] == "open"
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        raw = conn.execute(
+            "SELECT buttons, state FROM current_polls WHERE chat_id=? AND message_id=?",
+            (-8, 8),
+        ).fetchone()
+    finally:
+        conn.close()
+    assert raw is not None
+    assert raw[1] == "open"
+    assert sorted(json.loads(raw[0])[0]["user_list"]) == [101, 202]
 
 
 def test_standard_legacy_schema_migrates(tmp_path: Path) -> None:
