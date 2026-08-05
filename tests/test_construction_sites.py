@@ -44,9 +44,10 @@ def test_singleton_construction_sites_only_in_runtime() -> None:
             s = line.strip()
             if s.startswith("#"):
                 continue
-            if re.search(r"\b(ConfigData|Helper|SqlWorker|TeleBot)\(", s) and not s.startswith(
-                "def "
-            ):
+            # Skip defs/classes: mixin bases look like ``SqlWorker(Mixin, …)``.
+            if s.startswith(("def ", "class ")):
+                continue
+            if re.search(r"\b(ConfigData|Helper|SqlWorker|TeleBot)\(", s):
                 hits.append(f"{p.as_posix()}:{i}:{s}")
     only_runtime = all(
         "teleboss/shared/runtime.py" in h.replace("\\", "/") for h in hits
